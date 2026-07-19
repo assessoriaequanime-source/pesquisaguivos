@@ -29,7 +29,7 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
   head: () => ({
     meta: [
-      { title: "Painel · Guivos VAL-002" },
+      { title: "Painel · Guivos" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),

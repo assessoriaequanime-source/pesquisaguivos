@@ -242,11 +242,11 @@ function Proposal({ onContinue }: { onContinue: () => void }) {
 
           <p>
             Em vez de apresentar muitas opções, a Guivos buscará destacar o que faz
-            mais sentido para o seu momento — e ajudar você a transformar oportunidades
+            mais sentido para o seu momento e ajudar você a transformar oportunidades
             em ações concretas.
           </p>
           <p>
-            Ainda estamos construindo — e queremos entender se essa proposta realmente
+            Ainda estamos construindo e queremos entender se essa proposta realmente
             poderia contribuir para sua vida.
           </p>
         </div>

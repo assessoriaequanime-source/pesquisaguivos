@@ -1,6 +1,10 @@
 /* localStorage-backed store for Guivos VAL-002 survey */
 
 export type Option = { code: string; label: string };
+
+export type TitleStyle = "display" | "section" | "quote";
+export type Frame = "plain" | "card" | "accent";
+
 export type Base = {
   id: number;
   code: string;
@@ -9,9 +13,20 @@ export type Base = {
   title: string;
   helper?: string;
   optional?: boolean;
+  hidden?: boolean;
+  titleStyle?: TitleStyle;
+  frame?: Frame;
 };
+
+export type QType = "single" | "multi" | "scale" | "open";
+
 export type Question =
-  | (Base & { type: "single"; options: Option[]; asDropdown?: boolean; extra?: { key: string; placeholder: string } })
+  | (Base & {
+      type: "single";
+      options: Option[];
+      asDropdown?: boolean;
+      extra?: { key: string; placeholder: string };
+    })
   | (Base & { type: "multi"; options: Option[]; max?: number })
   | (Base & { type: "scale"; min: 0; max: 10; minLabel: string; maxLabel: string })
   | (Base & { type: "open"; placeholder: string; multiline?: boolean });
@@ -109,8 +124,9 @@ export const DEFAULT_QUESTIONS: Question[] = [
     placeholder: "Se pudesse dizer uma coisa ao time da Guivos, seria..." },
 ];
 
-const Q_KEY = "guivos.val002.questions.v1";
+const Q_KEY = "guivos.val002.questions.v2";
 const R_KEY = "guivos.val002.responses.v1";
+const C_KEY = "guivos.val002.content.v1";
 
 export function getQuestions(): Question[] {
   if (typeof window === "undefined") return DEFAULT_QUESTIONS;
@@ -132,6 +148,164 @@ export function resetQuestions() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(Q_KEY);
 }
+
+/* ---------- Question builders / mutators ---------- */
+
+let __idCounter = 1000;
+export function newQuestionId() {
+  __idCounter = Math.max(__idCounter, Date.now() % 1_000_000_000);
+  return ++__idCounter;
+}
+
+export function newQuestion(type: QType): Question {
+  const id = newQuestionId();
+  const base = {
+    id,
+    code: String(id),
+    section: "X",
+    sectionLabel: "Nova seção",
+    title: "Nova pergunta",
+    helper: "",
+    hidden: false,
+    titleStyle: "display" as TitleStyle,
+    frame: "plain" as Frame,
+  };
+  if (type === "single")
+    return { ...base, type, options: [{ code: `${id}.1`, label: "Opção 1" }, { code: `${id}.2`, label: "Opção 2" }] };
+  if (type === "multi")
+    return { ...base, type, options: [{ code: `${id}.1`, label: "Opção 1" }, { code: `${id}.2`, label: "Opção 2" }] };
+  if (type === "scale")
+    return { ...base, type, min: 0, max: 10, minLabel: "Mínimo", maxLabel: "Máximo" };
+  return { ...base, type: "open", placeholder: "Escreva sua resposta...", multiline: true };
+}
+
+export function convertQuestion(q: Question, next: QType): Question {
+  if (q.type === next) return q;
+  const base: Base = {
+    id: q.id, code: q.code, section: q.section, sectionLabel: q.sectionLabel,
+    title: q.title, helper: q.helper, optional: q.optional, hidden: q.hidden,
+    titleStyle: q.titleStyle, frame: q.frame,
+  };
+  const existingOptions = "options" in q ? q.options : undefined;
+  if (next === "single")
+    return { ...base, type: "single", options: existingOptions ?? [{ code: `${q.id}.1`, label: "Opção 1" }] };
+  if (next === "multi")
+    return { ...base, type: "multi", options: existingOptions ?? [{ code: `${q.id}.1`, label: "Opção 1" }] };
+  if (next === "scale")
+    return { ...base, type: "scale", min: 0, max: 10, minLabel: "Mínimo", maxLabel: "Máximo" };
+  return { ...base, type: "open", placeholder: "Escreva sua resposta...", multiline: true };
+}
+
+export function nextOptionCode(q: Question): string {
+  if (q.type !== "single" && q.type !== "multi") return `${q.id}.1`;
+  const n = q.options.length + 1;
+  let code = `${q.id}.${n}`;
+  const used = new Set(q.options.map((o) => o.code));
+  let k = n;
+  while (used.has(code)) { k++; code = `${q.id}.${k}`; }
+  return code;
+}
+
+/* ---------- Page content (intro/proposal/done) ---------- */
+
+export type PageContent = {
+  intro: {
+    titleTop: string;
+    titleAccent: string;
+    paragraphs: string[];
+    ctaLabel: string;
+    timeHint: string;
+  };
+  proposal: {
+    eyebrow: string;
+    titleTop: string;
+    titleAccent: string;
+    paragraphs: string[];
+    examples: { color: "mint" | "bubble" | "sky" | "lemon"; label: string; text: string }[];
+    closing: string[];
+    ctaLabel: string;
+    /** After which question ID should the proposal appear? */
+    triggerBeforeId?: number;
+  };
+  done: {
+    titleTop: string;
+    titleAccent: string;
+    tail: string;
+    paragraphs: string[];
+    signature: string;
+  };
+};
+
+export const DEFAULT_CONTENT: PageContent = {
+  intro: {
+    titleTop: "Construindo",
+    titleAccent: "a Guivos.",
+    paragraphs: [
+      "Ajude a construir uma plataforma pensada para acompanhar a evolução das pessoas ao longo da vida.",
+      "Não existem respostas certas ou erradas. Respostas críticas ou negativas são tão importantes quanto respostas positivas. O objetivo não é convencer você, mas compreender o que realmente faz sentido para sua vida.",
+    ],
+    ctaLabel: "Iniciar",
+    timeHint: "Tempo estimado: 5 a 7 minutos",
+  },
+  proposal: {
+    eyebrow: "Interlúdio · A proposta",
+    titleTop: "Antes de",
+    titleAccent: "continuarmos.",
+    paragraphs: [
+      "A Guivos está sendo criada para ajudar pessoas a avançar em áreas como carreira, saúde, finanças, estudos, relacionamentos, espiritualidade e projetos pessoais.",
+      "A partir da compreensão do momento que você está vivendo e do que deseja alcançar, poderá ajudar a organizar objetivos, identificar próximos passos e encontrar oportunidades mais adequadas para você.",
+    ],
+    examples: [
+      { color: "mint", label: "Saúde", text: "Se você deseja evoluir na saúde, a Guivos poderá ajudar a encontrar grupos de corrida, pedal, esportes, atividades, profissionais, eventos e outras experiências relacionadas ao seu objetivo." },
+      { color: "bubble", label: "Espiritualidade", text: "Se você deseja evoluir espiritualmente, poderá encontrar grupos, movimentos, encontros, conteúdos, projetos, voluntariado e pessoas que contribuam para esse caminho." },
+    ],
+    closing: [
+      "O mesmo princípio poderá ser aplicado a outras áreas da vida, conectando você a cursos, vagas, projetos, viagens, serviços, benefícios, pessoas e organizações.",
+      "Em vez de apresentar muitas opções, a Guivos buscará destacar o que faz mais sentido para o seu momento e ajudar você a transformar oportunidades em ações concretas.",
+      "Ainda estamos construindo e queremos entender se essa proposta realmente poderia contribuir para sua vida.",
+    ],
+    ctaLabel: "Continuar a pesquisa",
+    triggerBeforeId: 11,
+  },
+  done: {
+    titleTop: "Você acabou de",
+    titleAccent: "ajudar a construir",
+    tail: "a Guivos.",
+    paragraphs: [
+      "Obrigado por dedicar alguns minutos do seu tempo. Cada resposta será analisada com cuidado e poderá influenciar decisões importantes antes do lançamento.",
+    ],
+    signature:
+      "Esperamos que, no futuro, a Guivos possa contribuir para que mais pessoas encontrem próximos passos e oportunidades capazes de transformar suas vidas.",
+  },
+};
+
+export function getContent(): PageContent {
+  if (typeof window === "undefined") return DEFAULT_CONTENT;
+  try {
+    const raw = localStorage.getItem(C_KEY);
+    if (!raw) return DEFAULT_CONTENT;
+    const parsed = JSON.parse(raw) as Partial<PageContent>;
+    return {
+      intro: { ...DEFAULT_CONTENT.intro, ...(parsed.intro || {}) },
+      proposal: { ...DEFAULT_CONTENT.proposal, ...(parsed.proposal || {}) },
+      done: { ...DEFAULT_CONTENT.done, ...(parsed.done || {}) },
+    };
+  } catch {
+    return DEFAULT_CONTENT;
+  }
+}
+
+export function saveContent(c: PageContent) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(C_KEY, JSON.stringify(c));
+}
+
+export function resetContent() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(C_KEY);
+}
+
+/* ---------- Responses ---------- */
 
 export type ResponseRecord = {
   id: string;
@@ -170,4 +344,14 @@ export function deleteResponse(id: string) {
 
 export function clearResponses() {
   localStorage.removeItem(R_KEY);
+}
+
+/* ---------- Display helpers ---------- */
+
+export function visibleQuestions(qs: Question[]): Question[] {
+  return qs.filter((q) => !q.hidden);
+}
+
+export function displayCode(index: number): string {
+  return String(index + 1).padStart(2, "0");
 }

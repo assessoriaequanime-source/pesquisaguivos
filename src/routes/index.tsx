@@ -156,7 +156,6 @@ function TopBar({ progress }: { progress: number }) {
 function Intro({ onStart }: { onStart: () => void }) {
   return (
     <section className="anim-fade-up relative mx-auto max-w-3xl pt-8 text-center md:pt-16">
-      <BrandBackdrop variant="hero" />
       <div className="relative">
         <h1 className="font-display text-[clamp(2.5rem,7vw,5rem)] leading-[0.98] tracking-tight text-foreground">
           Construindo <br />

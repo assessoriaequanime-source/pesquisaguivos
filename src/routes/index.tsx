@@ -551,7 +551,17 @@ function Dropdown({ q, value, onChange, extras, setExtras }: {
         </select>
         <ArrowRight className="pointer-events-none absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-muted-foreground" strokeWidth={2} />
       </div>
-      {selected && q.extra && (
+      {selected && q.extra && q.id === 2 && (
+        <StateCityPicker
+          stateLabel={selected.label}
+          value={extras[q.extra.key] || ""}
+          onChange={(city) => {
+            const key = q.extra!.key;
+            setExtras((x) => ({ ...x, [key]: city }));
+          }}
+        />
+      )}
+      {selected && q.extra && q.id !== 2 && (
         <div className="anim-fade-up">
           <label className="text-xs font-medium text-muted-foreground">
             {q.extra.placeholder}

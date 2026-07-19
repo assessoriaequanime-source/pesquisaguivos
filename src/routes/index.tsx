@@ -229,8 +229,8 @@ function Proposal({ onContinue }: { onContinue: () => void }) {
               Por exemplo:
             </div>
             <div className="mt-3 space-y-3">
-              <ExampleCard color="mint" label="Saúde" text="Grupos de corrida, pedal, esportes, profissionais, eventos e experiências relacionadas ao seu objetivo." />
-              <ExampleCard color="bubble" label="Espiritualidade" text="Grupos, movimentos, encontros, conteúdos, projetos e pessoas que contribuam para esse caminho." />
+              <ExampleCard color="mint" label="Saúde" text="Se você deseja evoluir na saúde, a Guivos poderá ajudar a encontrar grupos de corrida, pedal, esportes, atividades, profissionais, eventos e outras experiências relacionadas ao seu objetivo." />
+              <ExampleCard color="bubble" label="Espiritualidade" text="Se você deseja evoluir espiritualmente, poderá encontrar grupos, movimentos, encontros, conteúdos, projetos, voluntariado e pessoas que contribuam para esse caminho." />
             </div>
           </div>
 

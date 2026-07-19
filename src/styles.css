@@ -8,7 +8,10 @@
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --radius-2xl: calc(var(--radius) + 12px);
+  --radius-3xl: calc(var(--radius) + 20px);
+  --radius-4xl: calc(var(--radius) + 32px);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -29,107 +32,99 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-ink: var(--ink);
-  --color-paper: var(--paper);
-  --color-ember: var(--ember);
-  --color-ember-soft: var(--ember-soft);
-  --color-hairline: var(--hairline);
 
-  --font-serif: "Instrument Serif", "Cormorant Garamond", serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Guivos brand palette */
+  --color-grape: var(--grape);
+  --color-grape-soft: var(--grape-soft);
+  --color-tangerine: var(--tangerine);
+  --color-bubble: var(--bubble);
+  --color-mint: var(--mint);
+  --color-sky: var(--sky);
+  --color-lemon: var(--lemon);
+  --color-ink: var(--ink);
+  --color-cloud: var(--cloud);
+
+  --font-display: "Bricolage Grotesque", "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 }
 
 :root {
-  --radius: 0.5rem;
+  --radius: 0.75rem;
 
-  /* Editorial paper-and-ink palette with ember accent */
-  --paper: oklch(0.972 0.008 85);
-  --ink: oklch(0.18 0.015 60);
-  --ember: oklch(0.58 0.16 42);
-  --ember-soft: oklch(0.88 0.05 55);
-  --hairline: oklch(0.82 0.012 70);
+  --ink: oklch(0.18 0.02 280);
+  --cloud: oklch(0.985 0.005 280);
 
-  --background: var(--paper);
+  /* Guivos primary + accents (based on brand imagery) */
+  --grape: oklch(0.52 0.22 295);        /* main purple */
+  --grape-soft: oklch(0.88 0.09 295);
+  --tangerine: oklch(0.72 0.19 45);     /* Ava orange */
+  --bubble: oklch(0.72 0.19 350);       /* pink */
+  --mint: oklch(0.75 0.16 155);         /* green */
+  --sky: oklch(0.75 0.15 230);          /* blue */
+  --lemon: oklch(0.88 0.16 95);         /* yellow */
+
+  --background: oklch(0.99 0.003 280);
   --foreground: var(--ink);
-  --card: oklch(0.985 0.006 85);
+  --card: oklch(1 0 0);
   --card-foreground: var(--ink);
-  --popover: var(--paper);
+  --popover: oklch(1 0 0);
   --popover-foreground: var(--ink);
-  --primary: var(--ink);
-  --primary-foreground: var(--paper);
-  --secondary: oklch(0.94 0.01 80);
+  --primary: var(--grape);
+  --primary-foreground: oklch(0.99 0.003 280);
+  --secondary: oklch(0.965 0.01 285);
   --secondary-foreground: var(--ink);
-  --muted: oklch(0.94 0.008 80);
-  --muted-foreground: oklch(0.45 0.012 65);
-  --accent: var(--ember);
-  --accent-foreground: var(--paper);
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: var(--paper);
-  --border: var(--hairline);
-  --input: var(--hairline);
-  --ring: var(--ember);
+  --muted: oklch(0.965 0.008 285);
+  --muted-foreground: oklch(0.5 0.02 280);
+  --accent: var(--tangerine);
+  --accent-foreground: oklch(0.99 0.003 280);
+  --destructive: oklch(0.58 0.22 27);
+  --destructive-foreground: oklch(0.99 0.003 280);
+  --border: oklch(0.92 0.01 285);
+  --input: oklch(0.94 0.01 285);
+  --ring: var(--grape);
 }
 
 @layer base {
   * { border-color: var(--color-border); }
-  html { font-feature-settings: "ss01", "cv11"; }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
   }
-  ::selection { background: var(--ink); color: var(--paper); }
+  ::selection { background: var(--grape); color: white; }
 }
 
 @utility font-display {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.03em;
 }
 
-@utility hairline {
-  background: linear-gradient(90deg, transparent, var(--hairline) 20%, var(--hairline) 80%, transparent);
-  height: 1px;
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(3deg); }
+}
+@keyframes float-slower {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(10px) rotate(-4deg); }
+}
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.94) translateY(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes fade-up {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes wobble {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg); }
 }
 
-@keyframes slide-up-in {
-  0% { opacity: 0; transform: translateY(14px); filter: blur(4px); }
-  100% { opacity: 1; transform: translateY(0); filter: blur(0); }
-}
-@keyframes fade-in-soft {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-@keyframes grain-drift {
-  0%, 100% { transform: translate(0,0); }
-  50% { transform: translate(-2%, 1%); }
-}
-@keyframes ember-pulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-
-@utility anim-slide-up {
-  animation: slide-up-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@utility anim-fade {
-  animation: fade-in-soft 0.6s ease-out both;
-}
-@utility ember-dot {
-  animation: ember-pulse 2.4s ease-in-out infinite;
-}
-
-/* Grain texture overlay */
-.grain::before {
-  content: "";
-  position: fixed;
-  inset: -50%;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.035;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  animation: grain-drift 8s steps(4) infinite;
-}
+@utility anim-float { animation: float-slow 7s ease-in-out infinite; }
+@utility anim-float-alt { animation: float-slower 9s ease-in-out infinite; }
+@utility anim-pop { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@utility anim-fade-up { animation: fade-up 0.5s ease-out both; }
+@utility anim-wobble { animation: wobble 4s ease-in-out infinite; }

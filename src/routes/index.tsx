@@ -629,9 +629,16 @@ function Done({ content }: { content: PageContent }) {
 function Footer() {
   return (
     <footer className="relative z-10 border-t border-border py-5">
-      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row sm:px-6 md:px-8">
-        <span>Guivos · Pesquisa Conceitual B2C</span>
-        <Link to="/admin" className="hover:text-grape">Painel de gestão</Link>
+      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-1.5 px-4 text-[11px] text-muted-foreground sm:flex-row sm:px-6 sm:text-xs md:px-8">
+        <span>Pesquisa Oficial Guivos</span>
+        <a
+          href="https://rodrigo.run"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tracking-wide text-muted-foreground/70 transition-colors hover:text-grape"
+        >
+          DEV — rodrigo.run
+        </a>
       </div>
     </footer>
   );

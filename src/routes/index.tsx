@@ -1,6 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CornerDownLeft, Settings } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CornerDownLeft } from "lucide-react";
+import { StateCityPicker } from "@/components/StateCityPicker";
+import { SuccessCheck } from "@/components/SuccessCheck";
 import {
   getContent,
   getQuestions,
@@ -18,6 +20,7 @@ export const Route = createFileRoute("/")({
 type Answers = Record<string, unknown>;
 
 function Survey() {
+  const navigate = useNavigate();
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [content, setContent] = useState<PageContent | null>(null);
   const [stage, setStage] = useState<"intro" | "survey" | "proposal" | "done">("intro");
@@ -28,6 +31,17 @@ function Survey() {
   const [proposalSeen, setProposalSeen] = useState(false);
   const startedAt = useRef<number>(0);
   const savedRef = useRef(false);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "g" || e.key === "G")) {
+        e.preventDefault();
+        navigate({ to: "/admin" });
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [navigate]);
 
   useEffect(() => {
     setAllQuestions(getQuestions());
@@ -134,13 +148,6 @@ function TopBar({ progress }: { progress: number }) {
       <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6 sm:py-3.5 md:px-8">
         <Link to="/" className="flex items-center gap-2">
           <span className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">Guivos</span>
-        </Link>
-        <Link
-          to="/admin"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-all hover:border-grape hover:text-grape sm:h-9 sm:w-9"
-          title="Painel de gestão"
-        >
-          <Settings className="h-4 w-4" strokeWidth={1.75} />
         </Link>
       </div>
       <div className="relative h-[3px] w-full overflow-hidden bg-secondary">
@@ -544,7 +551,17 @@ function Dropdown({ q, value, onChange, extras, setExtras }: {
         </select>
         <ArrowRight className="pointer-events-none absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-muted-foreground" strokeWidth={2} />
       </div>
-      {selected && q.extra && (
+      {selected && q.extra && q.id === 2 && (
+        <StateCityPicker
+          stateLabel={selected.label}
+          value={extras[q.extra.key] || ""}
+          onChange={(city) => {
+            const key = q.extra!.key;
+            setExtras((x) => ({ ...x, [key]: city }));
+          }}
+        />
+      )}
+      {selected && q.extra && q.id !== 2 && (
         <div className="anim-fade-up">
           <label className="text-xs font-medium text-muted-foreground">
             {q.extra.placeholder}
@@ -600,6 +617,9 @@ function Done({ content }: { content: PageContent }) {
   return (
     <section className="anim-fade-up relative mx-auto max-w-2xl pt-4 text-center">
       <div className="relative">
+        <div className="mb-8 flex justify-center sm:mb-10">
+          <SuccessCheck size={96} />
+        </div>
         <h2 className="font-display text-[clamp(1.75rem,5.5vw,4rem)] leading-[1] tracking-tight">
           {c.titleTop} <br />
           <span className="text-grape">{c.titleAccent}</span> {c.tail}
@@ -622,9 +642,16 @@ function Done({ content }: { content: PageContent }) {
 function Footer() {
   return (
     <footer className="relative z-10 border-t border-border py-5">
-      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row sm:px-6 md:px-8">
-        <span>Guivos · Pesquisa Conceitual B2C</span>
-        <Link to="/admin" className="hover:text-grape">Painel de gestão</Link>
+      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-1.5 px-4 text-[11px] text-muted-foreground sm:flex-row sm:px-6 sm:text-xs md:px-8">
+        <span>Pesquisa Oficial Guivos</span>
+        <a
+          href="https://rodrigo.run"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="tracking-wide text-muted-foreground/70 transition-colors hover:text-grape"
+        >
+          DEV — rodrigo.run
+        </a>
       </div>
     </footer>
   );

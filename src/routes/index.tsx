@@ -20,6 +20,7 @@ export const Route = createFileRoute("/")({
 type Answers = Record<string, unknown>;
 
 function Survey() {
+  const navigate = useNavigate();
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [content, setContent] = useState<PageContent | null>(null);
   const [stage, setStage] = useState<"intro" | "survey" | "proposal" | "done">("intro");
@@ -30,6 +31,17 @@ function Survey() {
   const [proposalSeen, setProposalSeen] = useState(false);
   const startedAt = useRef<number>(0);
   const savedRef = useRef(false);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === "g" || e.key === "G")) {
+        e.preventDefault();
+        navigate({ to: "/admin" });
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [navigate]);
 
   useEffect(() => {
     setAllQuestions(getQuestions());

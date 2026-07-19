@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CornerDownLeft, Settings } from "lucide-react";
-import { BrandBackdrop } from "@/components/BrandBackdrop";
 import {
   getQuestions,
   saveResponse,

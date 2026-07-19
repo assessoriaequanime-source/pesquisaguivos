@@ -123,6 +123,10 @@
   0%, 100% { transform: rotate(-2deg); }
   50% { transform: rotate(2deg); }
 }
+@keyframes shimmer {
+  0% { background-position: -100% 0; }
+  100% { background-position: 200% 0; }
+}
 
 @utility anim-float { animation: float-slow 7s ease-in-out infinite; }
 @utility anim-float-alt { animation: float-slower 9s ease-in-out infinite; }

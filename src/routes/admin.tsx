@@ -35,18 +35,31 @@ export const Route = createFileRoute("/admin")({
   }),
 });
 
+const ADMIN_PASSWORD = "guivos2026";
+const AUTH_KEY = "guivos-admin-auth";
+
 function Admin() {
+  const [authed, setAuthed] = useState(false);
   const [tab, setTab] = useState<"overview" | "responses" | "questions">("overview");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [responses, setResponses] = useState<ResponseRecord[]>([]);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_KEY) === "1") {
+      setAuthed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
     setQuestions(getQuestions());
     setResponses(getResponses());
-  }, []);
+  }, [authed]);
 
   const reloadResponses = () => setResponses(getResponses());
   const reloadQuestions = () => setQuestions(getQuestions());
+
+  if (!authed) return <AuthGate onSuccess={() => setAuthed(true)} />;
 
   return (
     <div className="min-h-screen bg-secondary/40">

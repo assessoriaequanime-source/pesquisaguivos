@@ -137,13 +137,6 @@ function TopBar({ progress }: { progress: number }) {
         <Link to="/" className="flex items-center gap-2">
           <span className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">Guivos</span>
         </Link>
-        <Link
-          to="/admin"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-all hover:border-grape hover:text-grape sm:h-9 sm:w-9"
-          title="Painel de gestão"
-        >
-          <Settings className="h-4 w-4" strokeWidth={1.75} />
-        </Link>
       </div>
       <div className="relative h-[3px] w-full overflow-hidden bg-secondary">
         <div

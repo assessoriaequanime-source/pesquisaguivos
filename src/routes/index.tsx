@@ -203,7 +203,7 @@ function Intro({ onStart }: { onStart: () => void }) {
 function Proposal({ onContinue }: { onContinue: () => void }) {
   return (
     <section className="anim-fade-up relative mx-auto max-w-3xl pt-4">
-      <BrandBackdrop variant="quiet" />
+      
       <div className="relative">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-grape">
           Interlúdio · A proposta

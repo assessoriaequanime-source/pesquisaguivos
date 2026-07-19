@@ -12,7 +12,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Mascot } from "@/components/BrandBackdrop";
+import { Lock } from "lucide-react";
 import {
   DEFAULT_QUESTIONS,
   clearResponses,
@@ -29,37 +29,47 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
   head: () => ({
     meta: [
-      { title: "Painel · Guivos VAL-002" },
+      { title: "Painel · Guivos" },
       { name: "robots", content: "noindex,nofollow" },
     ],
   }),
 });
 
+const ADMIN_PASSWORD = "guivos2026";
+const AUTH_KEY = "guivos-admin-auth";
+
 function Admin() {
+  const [authed, setAuthed] = useState(false);
   const [tab, setTab] = useState<"overview" | "responses" | "questions">("overview");
   const [questions, setQuestions] = useState<Question[]>([]);
   const [responses, setResponses] = useState<ResponseRecord[]>([]);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_KEY) === "1") {
+      setAuthed(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authed) return;
     setQuestions(getQuestions());
     setResponses(getResponses());
-  }, []);
+  }, [authed]);
 
   const reloadResponses = () => setResponses(getResponses());
   const reloadQuestions = () => setQuestions(getQuestions());
+
+  if (!authed) return <AuthGate onSuccess={() => setAuthed(true)} />;
 
   return (
     <div className="min-h-screen bg-secondary/40">
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <Link to="/" className="flex items-center gap-2.5">
-            <Mascot color="grape" size={34} />
-            <div className="leading-tight">
-              <div className="font-display text-lg font-bold">guivos</div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
-                Painel · VAL-002
-              </div>
-            </div>
+            <span className="font-display text-xl font-bold tracking-tight">Guivos</span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+              Painel
+            </span>
           </Link>
           <Link
             to="/"
@@ -116,6 +126,60 @@ function Admin() {
     </div>
   );
 }
+
+/* ---------------- AUTH GATE ---------------- */
+
+function AuthGate({ onSuccess }: { onSuccess: () => void }) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState(false);
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pw === ADMIN_PASSWORD) {
+      sessionStorage.setItem(AUTH_KEY, "1");
+      onSuccess();
+    } else {
+      setErr(true);
+    }
+  };
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-secondary/40 px-5">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-sm rounded-3xl border border-border bg-card p-8 shadow-sm"
+      >
+        <div className="flex items-center gap-2 text-grape">
+          <Lock className="h-5 w-5" strokeWidth={2} />
+          <span className="font-mono text-[11px] uppercase tracking-[0.22em]">Acesso restrito</span>
+        </div>
+        <h1 className="font-display mt-3 text-2xl font-semibold tracking-tight">Painel Guivos</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Informe a senha do gestor para continuar.
+        </p>
+        <input
+          type="password"
+          autoFocus
+          value={pw}
+          onChange={(e) => { setPw(e.target.value); setErr(false); }}
+          placeholder="Senha"
+          className="mt-5 w-full rounded-xl border-2 border-border bg-background px-4 py-3 text-sm focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15"
+        />
+        {err && (
+          <div className="mt-2 text-xs font-medium text-destructive">Senha incorreta.</div>
+        )}
+        <button
+          type="submit"
+          className="mt-5 w-full rounded-full bg-grape px-5 py-3 text-sm font-semibold text-white transition-all hover:scale-[1.01] hover:bg-ink"
+        >
+          Entrar
+        </button>
+        <Link to="/" className="mt-4 block text-center text-xs text-muted-foreground hover:text-grape">
+          Voltar à pesquisa
+        </Link>
+      </form>
+    </div>
+  );
+}
+
 
 /* ---------------- OVERVIEW ---------------- */
 
@@ -174,10 +238,7 @@ function Overview({ responses, questions }: { responses: ResponseRecord[]; quest
 
       {totals.totalR === 0 && (
         <div className="rounded-3xl border-2 border-dashed border-border bg-card p-10 text-center">
-          <div className="flex justify-center">
-            <Mascot color="sky" size={72} />
-          </div>
-          <h3 className="font-display mt-4 text-2xl font-semibold">Ainda sem respostas</h3>
+          <h3 className="font-display text-2xl font-semibold">Ainda sem respostas</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             Compartilhe o link da pesquisa para começar a coletar. As respostas são
             armazenadas localmente neste navegador.

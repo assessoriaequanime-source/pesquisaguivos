@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CornerDownLeft, Settings } from "lucide-react";
-import { BrandBackdrop } from "@/components/BrandBackdrop";
 import {
   getQuestions,
   saveResponse,
@@ -121,8 +120,7 @@ function TopBar({ progress }: { progress: number }) {
     <header className="fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5 sm:px-6 md:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <span className="font-display text-xl font-bold tracking-tight text-foreground">guivos</span>
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-grape" aria-hidden />
+          <span className="font-display text-xl font-bold tracking-tight text-foreground">Guivos</span>
         </Link>
         <Link
           to="/admin"
@@ -158,7 +156,6 @@ function TopBar({ progress }: { progress: number }) {
 function Intro({ onStart }: { onStart: () => void }) {
   return (
     <section className="anim-fade-up relative mx-auto max-w-3xl pt-8 text-center md:pt-16">
-      <BrandBackdrop variant="hero" />
       <div className="relative">
         <h1 className="font-display text-[clamp(2.5rem,7vw,5rem)] leading-[0.98] tracking-tight text-foreground">
           Construindo <br />
@@ -206,7 +203,7 @@ function Intro({ onStart }: { onStart: () => void }) {
 function Proposal({ onContinue }: { onContinue: () => void }) {
   return (
     <section className="anim-fade-up relative mx-auto max-w-3xl pt-4">
-      <BrandBackdrop variant="quiet" />
+      
       <div className="relative">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-grape">
           Interlúdio · A proposta
@@ -232,8 +229,8 @@ function Proposal({ onContinue }: { onContinue: () => void }) {
               Por exemplo:
             </div>
             <div className="mt-3 space-y-3">
-              <ExampleCard color="mint" label="Saúde" text="Grupos de corrida, pedal, esportes, profissionais, eventos e experiências relacionadas ao seu objetivo." />
-              <ExampleCard color="bubble" label="Espiritualidade" text="Grupos, movimentos, encontros, conteúdos, projetos e pessoas que contribuam para esse caminho." />
+              <ExampleCard color="mint" label="Saúde" text="Se você deseja evoluir na saúde, a Guivos poderá ajudar a encontrar grupos de corrida, pedal, esportes, atividades, profissionais, eventos e outras experiências relacionadas ao seu objetivo." />
+              <ExampleCard color="bubble" label="Espiritualidade" text="Se você deseja evoluir espiritualmente, poderá encontrar grupos, movimentos, encontros, conteúdos, projetos, voluntariado e pessoas que contribuam para esse caminho." />
             </div>
           </div>
 
@@ -245,11 +242,11 @@ function Proposal({ onContinue }: { onContinue: () => void }) {
 
           <p>
             Em vez de apresentar muitas opções, a Guivos buscará destacar o que faz
-            mais sentido para o seu momento — e ajudar você a transformar oportunidades
+            mais sentido para o seu momento e ajudar você a transformar oportunidades
             em ações concretas.
           </p>
           <p>
-            Ainda estamos construindo — e queremos entender se essa proposta realmente
+            Ainda estamos construindo e queremos entender se essa proposta realmente
             poderia contribuir para sua vida.
           </p>
         </div>
@@ -589,7 +586,7 @@ function NavBar({ onBack, onNext, canAdvance, last }: { onBack: () => void; onNe
 function Done() {
   return (
     <section className="anim-fade-up relative mx-auto max-w-2xl pt-4 text-center">
-      <BrandBackdrop variant="hero" />
+      
       <div className="relative">
         <h2 className="font-display text-[clamp(2rem,5.5vw,4rem)] leading-[1] tracking-tight">
           Você acabou de <br />

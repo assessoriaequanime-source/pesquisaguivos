@@ -607,6 +607,9 @@ function Done({ content }: { content: PageContent }) {
   return (
     <section className="anim-fade-up relative mx-auto max-w-2xl pt-4 text-center">
       <div className="relative">
+        <div className="mb-8 flex justify-center sm:mb-10">
+          <SuccessCheck size={96} />
+        </div>
         <h2 className="font-display text-[clamp(1.75rem,5.5vw,4rem)] leading-[1] tracking-tight">
           {c.titleTop} <br />
           <span className="text-grape">{c.titleAccent}</span> {c.tail}

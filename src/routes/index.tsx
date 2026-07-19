@@ -2,8 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, CornerDownLeft, Settings } from "lucide-react";
 import {
+  getContent,
   getQuestions,
   saveResponse,
+  visibleQuestions,
+  displayCode,
+  type PageContent,
   type Question,
 } from "@/lib/survey-store";
 
@@ -14,7 +18,8 @@ export const Route = createFileRoute("/")({
 type Answers = Record<string, unknown>;
 
 function Survey() {
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+  const [content, setContent] = useState<PageContent | null>(null);
   const [stage, setStage] = useState<"intro" | "survey" | "proposal" | "done">("intro");
   const [i, setI] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
@@ -24,14 +29,19 @@ function Survey() {
   const startedAt = useRef<number>(0);
   const savedRef = useRef(false);
 
-  useEffect(() => { setQuestions(getQuestions()); }, []);
+  useEffect(() => {
+    setAllQuestions(getQuestions());
+    setContent(getContent());
+  }, []);
 
+  const questions = useMemo(() => visibleQuestions(allQuestions), [allQuestions]);
   const total = questions.length;
   const currentQ = questions[i];
+  const triggerBeforeId = content?.proposal.triggerBeforeId ?? 11;
 
   useEffect(() => {
-    if (stage === "survey" && currentQ?.id === 11 && !proposalSeen) setStage("proposal");
-  }, [stage, currentQ, proposalSeen]);
+    if (stage === "survey" && currentQ?.id === triggerBeforeId && !proposalSeen) setStage("proposal");
+  }, [stage, currentQ, proposalSeen, triggerBeforeId]);
 
   useEffect(() => {
     if (stage === "done" && !savedRef.current) {
@@ -83,16 +93,19 @@ function Survey() {
 
   const begin = () => { startedAt.current = Date.now(); setStage("survey"); };
 
+  if (!content) return null;
+
   return (
     <div className="relative min-h-screen bg-background text-foreground">
       <TopBar progress={progress} />
-      <main className="relative z-10 mx-auto max-w-5xl px-5 pt-24 pb-32 sm:px-6 md:px-8">
-        {stage === "intro" && <Intro onStart={begin} />}
-        {stage === "proposal" && <Proposal onContinue={() => { setProposalSeen(true); setStage("survey"); }} />}
+      <main className="relative z-10 mx-auto max-w-5xl px-4 pt-20 pb-24 sm:px-6 sm:pt-24 sm:pb-32 md:px-8">
+        {stage === "intro" && <Intro content={content} onStart={begin} />}
+        {stage === "proposal" && <Proposal content={content} onContinue={() => { setProposalSeen(true); setStage("survey"); }} />}
         {stage === "survey" && currentQ && (
           <QuestionView
             key={currentQ.id}
             q={currentQ}
+            displayIndex={i}
             answers={answers}
             setAnswers={setAnswers}
             extras={extras}
@@ -106,7 +119,7 @@ function Survey() {
             total={total}
           />
         )}
-        {stage === "done" && <Done />}
+        {stage === "done" && <Done content={content} />}
       </main>
       <Footer />
     </div>
@@ -118,19 +131,18 @@ function Survey() {
 function TopBar({ progress }: { progress: number }) {
   return (
     <header className="fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5 sm:px-6 md:px-8">
+      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3 sm:px-6 sm:py-3.5 md:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <span className="font-display text-xl font-bold tracking-tight text-foreground">Guivos</span>
+          <span className="font-display text-lg font-bold tracking-tight text-foreground sm:text-xl">Guivos</span>
         </Link>
         <Link
           to="/admin"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-all hover:border-grape hover:text-grape"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-all hover:border-grape hover:text-grape sm:h-9 sm:w-9"
           title="Painel de gestão"
         >
           <Settings className="h-4 w-4" strokeWidth={1.75} />
         </Link>
       </div>
-      {/* Discrete, modern progress: soft gradient bar with an animated glossy stripe */}
       <div className="relative h-[3px] w-full overflow-hidden bg-secondary">
         <div
           className="absolute inset-y-0 left-0 bg-gradient-to-r from-grape via-bubble to-tangerine transition-[width] duration-700 ease-out"
@@ -153,42 +165,33 @@ function TopBar({ progress }: { progress: number }) {
 
 /* ---------------- INTRO ---------------- */
 
-function Intro({ onStart }: { onStart: () => void }) {
+function Intro({ content, onStart }: { content: PageContent; onStart: () => void }) {
+  const c = content.intro;
   return (
-    <section className="anim-fade-up relative mx-auto max-w-3xl pt-8 text-center md:pt-16">
+    <section className="anim-fade-up relative mx-auto max-w-3xl pt-4 text-center sm:pt-8 md:pt-16">
       <div className="relative">
-        <h1 className="font-display text-[clamp(2.5rem,7vw,5rem)] leading-[0.98] tracking-tight text-foreground">
-          Construindo <br />
+        <h1 className="font-display text-[clamp(2.25rem,7vw,5rem)] leading-[0.98] tracking-tight text-foreground">
+          {c.titleTop} <br />
           <span className="relative inline-block">
-            <span className="relative z-10">a Guivos.</span>
+            <span className="relative z-10">{c.titleAccent}</span>
             <span className="absolute inset-x-0 -bottom-1 h-3 rounded-full bg-lemon/70" />
           </span>
         </h1>
 
-        <div className="mx-auto mt-10 max-w-2xl space-y-5 text-left text-[15px] leading-relaxed text-foreground/85 sm:text-[16px]">
-          <p>
-            Ajude a construir uma plataforma pensada para acompanhar a evolução das
-            pessoas ao longo da vida.
-          </p>
-          <p>
-            Não existem respostas certas ou erradas. Respostas críticas ou negativas
-            são tão importantes quanto respostas positivas. O objetivo não é convencer
-            você, mas compreender o que realmente faz sentido para sua vida.
-          </p>
+        <div className="mx-auto mt-8 max-w-2xl space-y-5 text-left text-[15px] leading-relaxed text-foreground/85 sm:mt-10 sm:text-[16px]">
+          {c.paragraphs.map((p, i) => (<p key={i}>{p}</p>))}
         </div>
 
-        <div className="mt-12 flex flex-col items-center gap-4">
+        <div className="mt-10 flex flex-col items-center gap-4 sm:mt-12">
           <button
             onClick={onStart}
-            className="group inline-flex items-center gap-3 rounded-full bg-grape px-10 py-5 text-base font-semibold text-white shadow-[0_16px_40px_-12px_var(--grape)] transition-all hover:scale-[1.03] hover:bg-ink sm:px-12 sm:py-6 sm:text-lg"
+            className="group inline-flex items-center gap-3 rounded-full bg-grape px-8 py-4 text-base font-semibold text-white shadow-[0_16px_40px_-12px_var(--grape)] transition-all hover:scale-[1.03] hover:bg-ink sm:px-12 sm:py-6 sm:text-lg"
           >
-            Iniciar
+            {c.ctaLabel}
             <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" strokeWidth={2} />
           </button>
-          <div className="text-xs font-medium text-muted-foreground">
-            Tempo estimado: 5 a 7 minutos
-          </div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70">
+          <div className="text-xs font-medium text-muted-foreground">{c.timeHint}</div>
+          <div className="hidden items-center gap-2 text-[11px] text-muted-foreground/70 sm:flex">
             <CornerDownLeft className="h-3 w-3" strokeWidth={1.75} />
             Enter para avançar
           </div>
@@ -200,62 +203,40 @@ function Intro({ onStart }: { onStart: () => void }) {
 
 /* ---------------- PROPOSAL ---------------- */
 
-function Proposal({ onContinue }: { onContinue: () => void }) {
+function Proposal({ content, onContinue }: { content: PageContent; onContinue: () => void }) {
+  const c = content.proposal;
   return (
-    <section className="anim-fade-up relative mx-auto max-w-3xl pt-4">
-      
+    <section className="anim-fade-up relative mx-auto max-w-3xl pt-2 sm:pt-4">
       <div className="relative">
         <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-grape">
-          Interlúdio · A proposta
+          {c.eyebrow}
         </span>
-        <h2 className="font-display mt-4 text-[clamp(2rem,4.5vw,3.5rem)] leading-[1.05] tracking-tight">
-          Antes de <span className="text-grape">continuarmos.</span>
+        <h2 className="font-display mt-3 text-[clamp(1.75rem,4.5vw,3.5rem)] leading-[1.05] tracking-tight sm:mt-4">
+          {c.titleTop} <span className="text-grape">{c.titleAccent}</span>
         </h2>
 
-        <div className="mt-8 space-y-5 text-[15px] leading-relaxed text-foreground/85 sm:text-[16px]">
-          <p>
-            A Guivos está sendo criada para ajudar pessoas a avançar em áreas como
-            carreira, saúde, finanças, estudos, relacionamentos, espiritualidade e
-            projetos pessoais.
-          </p>
-          <p>
-            A partir da compreensão do momento que você está vivendo e do que deseja
-            alcançar, poderá ajudar a organizar objetivos, identificar próximos passos
-            e encontrar oportunidades mais adequadas para você.
-          </p>
+        <div className="mt-6 space-y-5 text-[15px] leading-relaxed text-foreground/85 sm:mt-8 sm:text-[16px]">
+          {c.paragraphs.map((p, i) => (<p key={i}>{p}</p>))}
 
           <div className="pt-2">
             <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
               Por exemplo:
             </div>
             <div className="mt-3 space-y-3">
-              <ExampleCard color="mint" label="Saúde" text="Se você deseja evoluir na saúde, a Guivos poderá ajudar a encontrar grupos de corrida, pedal, esportes, atividades, profissionais, eventos e outras experiências relacionadas ao seu objetivo." />
-              <ExampleCard color="bubble" label="Espiritualidade" text="Se você deseja evoluir espiritualmente, poderá encontrar grupos, movimentos, encontros, conteúdos, projetos, voluntariado e pessoas que contribuam para esse caminho." />
+              {c.examples.map((ex, i) => (
+                <ExampleCard key={i} color={ex.color} label={ex.label} text={ex.text} />
+              ))}
             </div>
           </div>
 
-          <p>
-            O mesmo princípio poderá ser aplicado a outras áreas da vida, conectando
-            você a cursos, vagas, projetos, viagens, serviços, benefícios, pessoas e
-            organizações.
-          </p>
-
-          <p>
-            Em vez de apresentar muitas opções, a Guivos buscará destacar o que faz
-            mais sentido para o seu momento e ajudar você a transformar oportunidades
-            em ações concretas.
-          </p>
-          <p>
-            Ainda estamos construindo e queremos entender se essa proposta realmente
-            poderia contribuir para sua vida.
-          </p>
+          {c.closing.map((p, i) => (<p key={i}>{p}</p>))}
         </div>
 
         <button
           onClick={onContinue}
-          className="group mt-10 inline-flex items-center gap-3 rounded-full bg-grape px-7 py-4 text-sm font-semibold text-white shadow-[0_10px_30px_-8px_var(--grape)] transition-all hover:scale-[1.02] hover:bg-ink"
+          className="group mt-8 inline-flex items-center gap-3 rounded-full bg-grape px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-8px_var(--grape)] transition-all hover:scale-[1.02] hover:bg-ink sm:mt-10 sm:px-7 sm:py-4"
         >
-          Continuar a pesquisa
+          {c.ctaLabel}
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2} />
         </button>
       </div>
@@ -267,7 +248,7 @@ function ExampleCard({ color, label, text }: { color: "mint" | "bubble" | "sky" 
   const bg = { mint: "bg-mint/15", bubble: "bg-bubble/15", sky: "bg-sky/15", lemon: "bg-lemon/25" }[color];
   const dot = { mint: "bg-mint", bubble: "bg-bubble", sky: "bg-sky", lemon: "bg-lemon" }[color];
   return (
-    <div className={`rounded-2xl border border-border ${bg} px-5 py-4`}>
+    <div className={`rounded-2xl border border-border ${bg} px-4 py-4 sm:px-5`}>
       <div className="flex items-center gap-2.5">
         <span className={`h-2.5 w-2.5 rounded-full ${dot}`} />
         <span className="font-display text-base font-semibold">{label}</span>
@@ -280,9 +261,10 @@ function ExampleCard({ color, label, text }: { color: "mint" | "bubble" | "sky" 
 /* ---------------- QUESTION VIEW ---------------- */
 
 function QuestionView({
-  q, answers, setAnswers, extras, setExtras, contact, setContact, onBack, onNext, canAdvance, index, total,
+  q, displayIndex, answers, setAnswers, extras, setExtras, contact, setContact, onBack, onNext, canAdvance, index, total,
 }: {
   q: Question;
+  displayIndex: number;
   answers: Answers;
   setAnswers: React.Dispatch<React.SetStateAction<Answers>>;
   extras: Record<string, string>;
@@ -293,72 +275,102 @@ function QuestionView({
 }) {
   const set = (v: unknown) => setAnswers((a) => ({ ...a, [q.id]: v }));
 
-  const showContact = q.id === 19 && (answers[19] === "19.1" || answers[19] === "19.2");
+  // Contact block: show on the "intention/participation" question (default id 19)
+  // when the first or second option is picked (positive intent).
+  const showContact = useMemo(() => {
+    if (q.id !== 19) return false;
+    if (q.type !== "single") return false;
+    const v = answers[q.id];
+    const positive = q.options.slice(0, 2).map((o) => o.code);
+    return typeof v === "string" && positive.includes(v);
+  }, [q, answers]);
+
+  const titleClass = (() => {
+    switch (q.titleStyle) {
+      case "section":
+        return "font-display text-[clamp(1.25rem,3vw,1.75rem)] font-semibold leading-[1.2] tracking-tight text-foreground";
+      case "quote":
+        return "font-display text-[clamp(1.35rem,3.2vw,2rem)] italic font-medium leading-[1.25] tracking-tight text-foreground";
+      default:
+        return "font-display text-[clamp(1.5rem,3.4vw,2.25rem)] leading-[1.15] tracking-tight text-foreground";
+    }
+  })();
+
+  const frameClass = (() => {
+    switch (q.frame) {
+      case "card":
+        return "rounded-3xl border border-border bg-card p-5 sm:p-8";
+      case "accent":
+        return "rounded-3xl border-2 border-grape/30 bg-gradient-to-br from-grape/5 to-bubble/5 p-5 sm:p-8";
+      default:
+        return "";
+    }
+  })();
 
   return (
     <section className="anim-fade-up mx-auto max-w-2xl">
-      <div className="flex items-center gap-3">
-        <span className="font-display text-sm font-semibold text-grape">{q.code}</span>
-        {q.optional && (
-          <span className="inline-flex rounded-full border border-border bg-card px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
-            Opcional
-          </span>
-        )}
-      </div>
-
-      <h2 className="font-display mt-3 text-[clamp(1.5rem,3.4vw,2.25rem)] leading-[1.15] tracking-tight text-foreground">
-        {q.title}
-      </h2>
-      {q.helper && (
-        <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
-          {q.helper}
-        </p>
-      )}
-
-      <div className="mt-8">
-        {q.type === "single" && q.asDropdown && (
-          <Dropdown q={q} value={answers[q.id] as string | undefined} onChange={set} extras={extras} setExtras={setExtras} />
-        )}
-        {q.type === "single" && !q.asDropdown && (
-          <SingleList q={q} value={answers[q.id] as string | undefined} onChange={set} />
-        )}
-        {q.type === "multi" && (
-          <MultiList q={q} value={(answers[q.id] as string[]) || []} onChange={set} />
-        )}
-        {q.type === "scale" && (
-          <ScalePicker q={q} value={answers[q.id] as number | undefined} onChange={set} />
-        )}
-        {q.type === "open" && (
-          <OpenInput q={q} value={(answers[q.id] as string) || ""} onChange={set} />
-        )}
-      </div>
-
-      {showContact && (
-        <div className="anim-fade-up mt-8 rounded-2xl border-2 border-grape/20 bg-gradient-to-br from-grape/5 to-bubble/5 p-5 sm:p-6">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-grape">
-            Deixe seu contato — é opcional
-          </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Usaremos apenas para convidar você para a primeira experiência.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <input
-              value={contact.name}
-              onChange={(e) => setContact({ ...contact, name: e.target.value })}
-              placeholder="Nome"
-              className="rounded-xl border-2 border-border bg-card px-4 py-3 text-sm focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15"
-            />
-            <input
-              value={contact.contact}
-              onChange={(e) => setContact({ ...contact, contact: e.target.value })}
-              placeholder="E-mail ou telefone"
-              className="rounded-xl border-2 border-border bg-card px-4 py-3 text-sm focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15"
-            />
-          </div>
+      <div className={frameClass}>
+        <div className="flex items-center gap-3">
+          <span className="font-display text-sm font-semibold text-grape">{displayCode(displayIndex)}</span>
+          {q.optional && (
+            <span className="inline-flex rounded-full border border-border bg-card px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+              Opcional
+            </span>
+          )}
         </div>
-      )}
 
-      <NavBar onBack={onBack} onNext={onNext} canAdvance={canAdvance} last={index === total - 1} />
+        <h2 className={`mt-3 ${titleClass}`}>{q.title}</h2>
+        {q.helper && (
+          <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground sm:text-[15px]">
+            {q.helper}
+          </p>
+        )}
+
+        <div className="mt-7 sm:mt-8">
+          {q.type === "single" && q.asDropdown && (
+            <Dropdown q={q} value={answers[q.id] as string | undefined} onChange={set} extras={extras} setExtras={setExtras} />
+          )}
+          {q.type === "single" && !q.asDropdown && (
+            <SingleList q={q} value={answers[q.id] as string | undefined} onChange={set} />
+          )}
+          {q.type === "multi" && (
+            <MultiList q={q} value={(answers[q.id] as string[]) || []} onChange={set} />
+          )}
+          {q.type === "scale" && (
+            <ScalePicker q={q} value={answers[q.id] as number | undefined} onChange={set} />
+          )}
+          {q.type === "open" && (
+            <OpenInput q={q} value={(answers[q.id] as string) || ""} onChange={set} />
+          )}
+        </div>
+
+        {showContact && (
+          <div className="anim-fade-up mt-8 rounded-2xl border-2 border-grape/20 bg-gradient-to-br from-grape/5 to-bubble/5 p-5 sm:p-6">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-grape">
+              Deixe seu contato — é opcional
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Usaremos apenas para convidar você para a primeira experiência.
+            </p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <input
+                value={contact.name}
+                onChange={(e) => setContact({ ...contact, name: e.target.value })}
+                placeholder="Nome"
+                className="rounded-xl border-2 border-border bg-card px-4 py-3 text-sm focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15"
+              />
+              <input
+                value={contact.contact}
+                onChange={(e) => setContact({ ...contact, contact: e.target.value })}
+                placeholder="E-mail ou telefone"
+                className="rounded-xl border-2 border-border bg-card px-4 py-3 text-sm focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15"
+              />
+            </div>
+          </div>
+        )}
+
+        <NavBar onBack={onBack} onNext={onNext} canAdvance={canAdvance} last={index === total - 1} />
+      </div>
     </section>
   );
 }
@@ -464,7 +476,7 @@ function ScalePicker({ q, value, onChange }: { q: Extract<Question, { type: "sca
               key={n}
               onClick={() => onChange(n)}
               className={[
-                "relative flex aspect-square items-center justify-center rounded-lg border-2 font-display text-sm font-semibold transition-all sm:rounded-xl sm:text-base",
+                "relative flex aspect-square items-center justify-center rounded-lg border-2 font-display text-xs font-semibold transition-all sm:rounded-xl sm:text-base",
                 active
                   ? `${colorFor(n)} scale-110 shadow-lg`
                   : "border-border bg-card hover:-translate-y-0.5 hover:border-grape/60",
@@ -476,8 +488,8 @@ function ScalePicker({ q, value, onChange }: { q: Extract<Question, { type: "sca
         })}
       </div>
       <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-muted-foreground sm:text-xs">
-        <span>0 · {q.minLabel}</span>
-        <span className="text-right">{q.maxLabel} · 10</span>
+        <span className="max-w-[45%]">0 · {q.minLabel}</span>
+        <span className="max-w-[45%] text-right">{q.maxLabel} · 10</span>
       </div>
       {value !== undefined && (
         <div className="anim-pop mt-6 flex items-center gap-4 rounded-2xl bg-secondary p-4 sm:p-5">
@@ -527,7 +539,7 @@ function Dropdown({ q, value, onChange, extras, setExtras }: {
           onChange={(e) => onChange(e.target.value)}
           className="w-full appearance-none rounded-2xl border-2 border-border bg-card px-4 py-3.5 pr-12 font-display text-base font-semibold text-foreground focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15 sm:px-5 sm:py-4 sm:text-xl"
         >
-          <option value="" disabled>Selecione seu estado</option>
+          <option value="" disabled>Selecione uma opção</option>
           {q.options.map((o) => <option key={o.code} value={o.code}>{o.label}</option>)}
         </select>
         <ArrowRight className="pointer-events-none absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-muted-foreground" strokeWidth={2} />
@@ -556,7 +568,7 @@ function Dropdown({ q, value, onChange, extras, setExtras }: {
 
 function NavBar({ onBack, onNext, canAdvance, last }: { onBack: () => void; onNext: () => void; canAdvance: boolean; last: boolean }) {
   return (
-    <div className="mt-10 flex items-center justify-between gap-3 border-t border-border pt-6">
+    <div className="mt-8 flex items-center justify-between gap-3 border-t border-border pt-6 sm:mt-10">
       <button
         onClick={onBack}
         className="group inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:px-4"
@@ -583,23 +595,22 @@ function NavBar({ onBack, onNext, canAdvance, last }: { onBack: () => void; onNe
 
 /* ---------------- DONE ---------------- */
 
-function Done() {
+function Done({ content }: { content: PageContent }) {
+  const c = content.done;
   return (
     <section className="anim-fade-up relative mx-auto max-w-2xl pt-4 text-center">
-      
       <div className="relative">
-        <h2 className="font-display text-[clamp(2rem,5.5vw,4rem)] leading-[1] tracking-tight">
-          Você acabou de <br />
-          <span className="text-grape">ajudar a construir</span> a Guivos.
+        <h2 className="font-display text-[clamp(1.75rem,5.5vw,4rem)] leading-[1] tracking-tight">
+          {c.titleTop} <br />
+          <span className="text-grape">{c.titleAccent}</span> {c.tail}
         </h2>
-        <p className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-lg">
-          Obrigado por dedicar alguns minutos do seu tempo. Cada resposta será
-          analisada com cuidado e poderá influenciar decisões importantes antes
-          do lançamento.
-        </p>
-        <p className="mt-12 font-display text-lg italic text-muted-foreground sm:text-xl">
-          Esperamos que, no futuro, a Guivos possa contribuir para que mais pessoas
-          encontrem próximos passos e oportunidades capazes de transformar suas vidas.
+        {c.paragraphs.map((p, i) => (
+          <p key={i} className="mx-auto mt-6 max-w-xl text-[15px] leading-relaxed text-muted-foreground sm:text-lg">
+            {p}
+          </p>
+        ))}
+        <p className="mt-10 font-display text-base italic text-muted-foreground sm:mt-12 sm:text-xl">
+          {c.signature}
         </p>
       </div>
     </section>
@@ -611,7 +622,7 @@ function Done() {
 function Footer() {
   return (
     <footer className="relative z-10 border-t border-border py-5">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 text-xs text-muted-foreground sm:px-6 md:px-8">
+      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-2 px-4 text-xs text-muted-foreground sm:flex-row sm:px-6 md:px-8">
         <span>Guivos · Pesquisa Conceitual B2C</span>
         <Link to="/admin" className="hover:text-grape">Painel de gestão</Link>
       </div>

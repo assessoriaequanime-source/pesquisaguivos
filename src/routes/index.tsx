@@ -586,7 +586,7 @@ function NavBar({ onBack, onNext, canAdvance, last }: { onBack: () => void; onNe
 function Done() {
   return (
     <section className="anim-fade-up relative mx-auto max-w-2xl pt-4 text-center">
-      <BrandBackdrop variant="hero" />
+      
       <div className="relative">
         <h2 className="font-display text-[clamp(2rem,5.5vw,4rem)] leading-[1] tracking-tight">
           Você acabou de <br />

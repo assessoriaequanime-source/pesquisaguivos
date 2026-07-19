@@ -53,13 +53,10 @@ function Admin() {
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 md:px-8">
           <Link to="/" className="flex items-center gap-2.5">
-            <Mascot color="grape" size={34} />
-            <div className="leading-tight">
-              <div className="font-display text-lg font-bold">guivos</div>
-              <div className="font-mono text-[9px] uppercase tracking-[0.22em] text-muted-foreground">
-                Painel · VAL-002
-              </div>
-            </div>
+            <span className="font-display text-xl font-bold tracking-tight">Guivos</span>
+            <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
+              Painel
+            </span>
           </Link>
           <Link
             to="/"

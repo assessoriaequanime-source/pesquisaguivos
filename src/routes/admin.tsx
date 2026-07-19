@@ -127,6 +127,60 @@ function Admin() {
   );
 }
 
+/* ---------------- AUTH GATE ---------------- */
+
+function AuthGate({ onSuccess }: { onSuccess: () => void }) {
+  const [pw, setPw] = useState("");
+  const [err, setErr] = useState(false);
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pw === ADMIN_PASSWORD) {
+      sessionStorage.setItem(AUTH_KEY, "1");
+      onSuccess();
+    } else {
+      setErr(true);
+    }
+  };
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-secondary/40 px-5">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-sm rounded-3xl border border-border bg-card p-8 shadow-sm"
+      >
+        <div className="flex items-center gap-2 text-grape">
+          <Lock className="h-5 w-5" strokeWidth={2} />
+          <span className="font-mono text-[11px] uppercase tracking-[0.22em]">Acesso restrito</span>
+        </div>
+        <h1 className="font-display mt-3 text-2xl font-semibold tracking-tight">Painel Guivos</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Informe a senha do gestor para continuar.
+        </p>
+        <input
+          type="password"
+          autoFocus
+          value={pw}
+          onChange={(e) => { setPw(e.target.value); setErr(false); }}
+          placeholder="Senha"
+          className="mt-5 w-full rounded-xl border-2 border-border bg-background px-4 py-3 text-sm focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15"
+        />
+        {err && (
+          <div className="mt-2 text-xs font-medium text-destructive">Senha incorreta.</div>
+        )}
+        <button
+          type="submit"
+          className="mt-5 w-full rounded-full bg-grape px-5 py-3 text-sm font-semibold text-white transition-all hover:scale-[1.01] hover:bg-ink"
+        >
+          Entrar
+        </button>
+        <Link to="/" className="mt-4 block text-center text-xs text-muted-foreground hover:text-grape">
+          Voltar à pesquisa
+        </Link>
+      </form>
+    </div>
+  );
+}
+
+
 /* ---------------- OVERVIEW ---------------- */
 
 function Overview({ responses, questions }: { responses: ResponseRecord[]; questions: Question[] }) {

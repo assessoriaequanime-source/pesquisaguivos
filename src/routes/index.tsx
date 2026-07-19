@@ -120,8 +120,7 @@ function TopBar({ progress }: { progress: number }) {
     <header className="fixed inset-x-0 top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-5 py-3.5 sm:px-6 md:px-8">
         <Link to="/" className="flex items-center gap-2">
-          <span className="font-display text-xl font-bold tracking-tight text-foreground">guivos</span>
-          <span className="mt-1 h-1.5 w-1.5 rounded-full bg-grape" aria-hidden />
+          <span className="font-display text-xl font-bold tracking-tight text-foreground">Guivos</span>
         </Link>
         <Link
           to="/admin"

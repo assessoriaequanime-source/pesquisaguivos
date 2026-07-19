@@ -171,10 +171,7 @@ function Overview({ responses, questions }: { responses: ResponseRecord[]; quest
 
       {totals.totalR === 0 && (
         <div className="rounded-3xl border-2 border-dashed border-border bg-card p-10 text-center">
-          <div className="flex justify-center">
-            <Mascot color="sky" size={72} />
-          </div>
-          <h3 className="font-display mt-4 text-2xl font-semibold">Ainda sem respostas</h3>
+          <h3 className="font-display text-2xl font-semibold">Ainda sem respostas</h3>
           <p className="mt-2 text-sm text-muted-foreground">
             Compartilhe o link da pesquisa para começar a coletar. As respostas são
             armazenadas localmente neste navegador.

@@ -12,7 +12,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { Mascot } from "@/components/BrandBackdrop";
+import { Lock } from "lucide-react";
 import {
   DEFAULT_QUESTIONS,
   clearResponses,

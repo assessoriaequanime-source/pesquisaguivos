@@ -30,8 +30,8 @@ function Survey() {
   const [contact, setContact] = useState({ name: "", contact: "" });
   const startedAt = useRef<number>(0);
   const savedRef = useRef(false);
-  const prevIndexRef = useRef<number>(-1);
   const returnAfterProposalRef = useRef<number>(0);
+
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {

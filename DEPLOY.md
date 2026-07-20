@@ -88,16 +88,74 @@ descobrir rapidamente se funcionou:
 
 ## B) Deploy na VPS Hostinger (só quando você pedir)
 
-Passos previstos (vou te passar os comandos exatos quando você confirmar):
-1. Importar o repositório no painel da Hostinger (git import).
-2. Gerar os segredos de produção (`node deploy/generate-keys.mjs`, valores
-   diferentes dos usados localmente).
-3. Configurar `.env` na VPS com esses valores + domínio real em
-   `VITE_SUPABASE_URL`/`SUPABASE_URL` (ex.: `https://api.seudominio.com`).
-4. `docker compose up -d --build`.
-5. Configurar reverse proxy (Nginx/Caddy) com TLS na frente das portas
-   `3000` (app) e `8000` (Kong), apontando os domínios/subdomínios
-   correspondentes.
-6. Conferir backup do volume `pgdata` (dump periódico do Postgres).
+Domínio já configurado (DNS apontando para a VPS): `pesquisa.guivos.com`.
+
+**Isolamento nesta VPS**: o servidor já hospeda vários outros projetos em
+produção (Typebot, Twenty CRM, Chatwoot, Singulai, GrupoWin etc.), incluindo
+um projeto antigo e não relacionado em `/opt/guivos` /
+`/opt/guivos-backend-root` (containers `guivos-root-postgres`/
+`guivos-root-redis`). **Não tocamos nesses diretórios/containers.** Este
+projeto usa:
+- Diretório próprio: `/opt/pesquisaguivos` (nome distinto, sem colidir).
+- `name: pesquisaguivos` fixo no `docker-compose.yml` → containers/volumes/
+  rede sempre prefixados com `pesquisaguivos_`.
+- Porta `APP_PORT=3090` (única porta publicada, só em `127.0.0.1`) — livre e
+  conferida contra `ss -tulpn` e `docker ps` do servidor. Kong/Postgres/
+  PostgREST não publicam porta nenhuma (só acessíveis dentro da rede do
+  compose).
+
+Passos:
+
+1. Clonar em um diretório isolado:
+   ```bash
+   cd /opt
+   git clone https://github.com/assessoriaequanime-source/pesquisaguivos.git
+   cd pesquisaguivos
+   ```
+2. Gerar segredos de produção (diferentes dos usados localmente):
+   ```bash
+   node deploy/generate-keys.mjs
+   cp .env.example .env
+   # cole os valores gerados no .env; mantenha APP_PORT=3090 (ou outra porta
+   # livre, conferida antes com `ss -tulpn`)
+   ```
+3. Subir a stack:
+   ```bash
+   docker compose up -d --build
+   docker compose ps   # confirmar que os 4 serviços estão healthy/running
+   ```
+4. Configurar o Nginx (já instalado nativamente no servidor) para o domínio.
+   Antes de criar, confira se já não existe um server block para esse
+   domínio: `grep -rl "pesquisa.guivos.com" /etc/nginx/sites-enabled/ 2>/dev/null`.
+   Se não existir, crie `/etc/nginx/sites-available/pesquisa.guivos.com`:
+   ```nginx
+   server {
+       listen 80;
+       server_name pesquisa.guivos.com;
+
+       location / {
+           proxy_pass http://127.0.0.1:3090;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+   ```bash
+   ln -s /etc/nginx/sites-available/pesquisa.guivos.com /etc/nginx/sites-enabled/
+   nginx -t && systemctl reload nginx
+   certbot --nginx -d pesquisa.guivos.com   # TLS (se o certbot já estiver instalado no servidor)
+   ```
+5. Validar: `https://pesquisa.guivos.com` (site) e
+   `https://pesquisa.guivos.com/admin` (login com o `ADMIN_PASSWORD` do
+   `.env` — lembre de sincronizar com a constante em `src/routes/admin.tsx`
+   se for trocar a senha padrão).
+6. Conferir backup do volume `pesquisaguivos_pgdata` (dump periódico do
+   Postgres) — igual já deve ser feito nos outros projetos deste servidor.
 
 Não vou rodar nada disso nem fazer push/deploy sem sua confirmação explícita.
+

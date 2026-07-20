@@ -8,6 +8,11 @@
 #   1) node deploy/generate-keys.mjs   -> gera os segredos
 #   2) cp .env.example .env            -> cole os segredos gerados
 #   3) docker compose up --build
+#
+# Nome de projeto fixo (não depende do nome da pasta onde for clonado) para
+# que containers, volumes e a rede fiquem sempre prefixados com
+# "pesquisaguivos_" e nunca colidam com outros projetos na mesma VPS.
+name: pesquisaguivos
 
 services:
   db:
@@ -56,8 +61,10 @@ services:
       - |
         sed -e "s|\${ANON_KEY}|$$ANON_KEY|g" -e "s|\${SERVICE_ROLE_KEY}|$$SERVICE_ROLE_KEY|g" /home/kong/kong.yml.template > /home/kong/kong.yml
         exec /docker-entrypoint.sh kong docker-start
-    ports:
-      - "${KONG_HTTP_PORT:-8000}:8000"
+    # Sem "ports:" de propósito: o Kong só precisa ser alcançável por "app"
+    # dentro da rede interna do compose (http://kong:8000). O navegador nunca
+    # fala com ele diretamente, então não há necessidade de publicar a porta
+    # no host (menos superfície exposta na VPS).
     depends_on:
       - rest
 
@@ -69,7 +76,9 @@ services:
     environment:
       SUPABASE_URL: http://kong:8000
     ports:
-      - "${APP_PORT:-3000}:3000"
+      # Publicado só em loopback: em produção, um nginx/reverse proxy no host
+      # (fora deste compose) encaminha o domínio público para 127.0.0.1:APP_PORT.
+      - "127.0.0.1:${APP_PORT:-3090}:3000"
     depends_on:
       - kong
 

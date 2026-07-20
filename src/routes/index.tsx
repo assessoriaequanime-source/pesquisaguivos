@@ -495,7 +495,7 @@ function InfoBubble({ content }: { content: string }) {
 function SingleList({ q, value, onChange }: { q: Extract<Question, { type: "single" }>; value?: string; onChange: (v: string) => void }) {
   return (
     <div className="flex flex-col gap-2.5">
-      {q.options.map((o, idx) => {
+      {q.options.map((o) => {
         const selected = value === o.code;
         return (
           <button
@@ -510,10 +510,14 @@ function SingleList({ q, value, onChange }: { q: Extract<Question, { type: "sing
           >
             <div className="flex items-center gap-3">
               <span className={[
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-all",
-                selected ? "border-white/70 bg-white text-grape" : "border-border bg-secondary text-muted-foreground",
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all",
+                selected ? "border-white bg-white" : "border-border bg-secondary",
               ].join(" ")}>
-                {String.fromCharCode(65 + idx)}
+                {selected ? (
+                  <span className="h-2.5 w-2.5 rounded-full bg-grape" />
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                )}
               </span>
               <span className="min-w-0 flex-1 text-[14px] font-medium leading-snug sm:text-[15px]">{o.label}</span>
               {selected && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}

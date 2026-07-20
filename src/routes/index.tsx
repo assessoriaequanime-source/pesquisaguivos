@@ -752,15 +752,44 @@ function Done({ content }: { content: PageContent }) {
 /* ---------------- FOOTER ---------------- */
 
 function Footer() {
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const url = typeof window !== "undefined" ? window.location.origin + "/" : "";
+    const shareData = { title: "Pesquisa Oficial Guivos", text: "Contribua com a pesquisa da Guivos.", url };
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      /* fall through to copy */
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      /* ignore */
+    }
+  };
   return (
-    <footer className="relative z-10 border-t border-border py-5">
-      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-1.5 px-4 text-[11px] text-muted-foreground sm:flex-row sm:px-6 sm:text-xs md:px-8">
-        <span>Pesquisa Oficial Guivos</span>
+    <footer className="relative z-10 mt-auto border-t border-border py-5">
+      <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 text-[11px] text-muted-foreground sm:px-6 sm:text-xs md:px-8">
+        <span className="min-w-0 truncate">Pesquisa Oficial Guivos</span>
+        <button
+          type="button"
+          onClick={share}
+          aria-label="Compartilhar a pesquisa"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-grape hover:text-grape sm:text-xs"
+        >
+          <Share2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+          {copied ? "Link copiado" : "Compartilhar"}
+        </button>
         <a
           href="https://rodrigo.run"
           target="_blank"
           rel="noopener noreferrer"
-          className="tracking-wide text-muted-foreground/70 transition-colors hover:text-grape"
+          className="justify-self-end tracking-wide text-muted-foreground/70 transition-colors hover:text-grape"
         >
           DEV — rodrigo.run
         </a>

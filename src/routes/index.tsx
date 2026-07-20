@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CornerDownLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CornerDownLeft, HelpCircle, Share2, X } from "lucide-react";
 import { StateCityPicker } from "@/components/StateCityPicker";
 import { SuccessCheck } from "@/components/SuccessCheck";
 import {

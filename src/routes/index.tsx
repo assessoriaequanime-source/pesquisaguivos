@@ -28,9 +28,10 @@ function Survey() {
   const [answers, setAnswers] = useState<Answers>({});
   const [extras, setExtras] = useState<Record<string, string>>({});
   const [contact, setContact] = useState({ name: "", contact: "" });
-  const [proposalSeen, setProposalSeen] = useState(false);
   const startedAt = useRef<number>(0);
   const savedRef = useRef(false);
+  const prevIndexRef = useRef<number>(-1);
+  const returnAfterProposalRef = useRef<number>(0);
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -53,9 +54,6 @@ function Survey() {
   const currentQ = questions[i];
   const triggerBeforeId = content?.proposal.triggerBeforeId ?? 11;
 
-  useEffect(() => {
-    if (stage === "survey" && currentQ?.id === triggerBeforeId && !proposalSeen) setStage("proposal");
-  }, [stage, currentQ, proposalSeen, triggerBeforeId]);
 
   useEffect(() => {
     if (stage === "done" && !savedRef.current) {

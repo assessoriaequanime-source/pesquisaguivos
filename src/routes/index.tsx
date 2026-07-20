@@ -82,10 +82,31 @@ function Survey() {
 
   const next = () => {
     if (!canAdvance) return;
+    // Trigger proposal when crossing forward across the trigger question.
+    const nextIdx = i + 1;
+    const nextQ = questions[nextIdx];
+    if (nextQ && nextQ.id === triggerBeforeId) {
+      returnAfterProposalRef.current = nextIdx;
+      setI(nextIdx);
+      setStage("proposal");
+      return;
+    }
     if (i === total - 1) { setStage("done"); return; }
-    setI((n) => n + 1);
+    setI(nextIdx);
   };
   const back = () => {
+    if (stage === "proposal") {
+      // From the proposal, go back to the question that preceded it.
+      const backIdx = Math.max(0, (returnAfterProposalRef.current || 0) - 1);
+      setI(backIdx);
+      setStage("survey");
+      return;
+    }
+    if (stage === "done") {
+      setStage("survey");
+      setI(total - 1);
+      return;
+    }
     if (i === 0) { setStage("intro"); return; }
     setI((n) => n - 1);
   };
@@ -108,11 +129,17 @@ function Survey() {
   if (!content) return null;
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className="relative flex min-h-screen flex-col bg-background text-foreground">
       <TopBar progress={progress} />
-      <main className="relative z-10 mx-auto max-w-5xl px-4 pt-20 pb-24 sm:px-6 sm:pt-24 sm:pb-32 md:px-8">
+      <main className="relative z-10 mx-auto w-full max-w-5xl flex-1 px-4 pt-20 pb-16 sm:px-6 sm:pt-24 sm:pb-20 md:px-8">
         {stage === "intro" && <Intro content={content} onStart={begin} />}
-        {stage === "proposal" && <Proposal content={content} onContinue={() => { setProposalSeen(true); setStage("survey"); }} />}
+        {stage === "proposal" && (
+          <Proposal
+            content={content}
+            onBack={back}
+            onContinue={() => setStage("survey")}
+          />
+        )}
         {stage === "survey" && currentQ && (
           <QuestionView
             key={currentQ.id}
@@ -137,6 +164,7 @@ function Survey() {
     </div>
   );
 }
+
 
 /* ---------------- TOP BAR ---------------- */
 

@@ -857,6 +857,27 @@ function QuestionEditor({
         />
       </Field>
 
+      <div className="rounded-2xl border border-dashed border-border bg-secondary/30 p-4">
+        <label className="flex items-center gap-2 text-sm font-medium">
+          <input
+            type="checkbox"
+            checked={!!q.showInfo}
+            onChange={(e) => onPatch({ showInfo: e.target.checked })}
+            className="h-4 w-4 accent-grape"
+          />
+          Exibir ícone de ajuda com informação complementar
+        </label>
+        <textarea
+          value={q.info || ""}
+          onChange={(e) => onPatch({ info: e.target.value })}
+          rows={3}
+          disabled={!q.showInfo}
+          placeholder="Informação complementar exibida ao clicar no ícone de ajuda desta pergunta."
+          className="mt-3 w-full resize-none rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-grape focus:outline-none focus:ring-2 focus:ring-grape/20 disabled:opacity-50"
+        />
+      </div>
+
+
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm">
           <input

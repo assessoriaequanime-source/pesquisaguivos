@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, CornerDownLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, CornerDownLeft, HelpCircle, Share2, X } from "lucide-react";
 import { StateCityPicker } from "@/components/StateCityPicker";
 import { SuccessCheck } from "@/components/SuccessCheck";
 import {
@@ -28,9 +28,10 @@ function Survey() {
   const [answers, setAnswers] = useState<Answers>({});
   const [extras, setExtras] = useState<Record<string, string>>({});
   const [contact, setContact] = useState({ name: "", contact: "" });
-  const [proposalSeen, setProposalSeen] = useState(false);
   const startedAt = useRef<number>(0);
   const savedRef = useRef(false);
+  const returnAfterProposalRef = useRef<number>(0);
+
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -53,9 +54,6 @@ function Survey() {
   const currentQ = questions[i];
   const triggerBeforeId = content?.proposal.triggerBeforeId ?? 11;
 
-  useEffect(() => {
-    if (stage === "survey" && currentQ?.id === triggerBeforeId && !proposalSeen) setStage("proposal");
-  }, [stage, currentQ, proposalSeen, triggerBeforeId]);
 
   useEffect(() => {
     if (stage === "done" && !savedRef.current) {
@@ -84,10 +82,31 @@ function Survey() {
 
   const next = () => {
     if (!canAdvance) return;
+    // Trigger proposal when crossing forward across the trigger question.
+    const nextIdx = i + 1;
+    const nextQ = questions[nextIdx];
+    if (nextQ && nextQ.id === triggerBeforeId) {
+      returnAfterProposalRef.current = nextIdx;
+      setI(nextIdx);
+      setStage("proposal");
+      return;
+    }
     if (i === total - 1) { setStage("done"); return; }
-    setI((n) => n + 1);
+    setI(nextIdx);
   };
   const back = () => {
+    if (stage === "proposal") {
+      // From the proposal, go back to the question that preceded it.
+      const backIdx = Math.max(0, (returnAfterProposalRef.current || 0) - 1);
+      setI(backIdx);
+      setStage("survey");
+      return;
+    }
+    if (stage === "done") {
+      setStage("survey");
+      setI(total - 1);
+      return;
+    }
     if (i === 0) { setStage("intro"); return; }
     setI((n) => n - 1);
   };
@@ -110,11 +129,17 @@ function Survey() {
   if (!content) return null;
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className="relative flex min-h-screen flex-col bg-background text-foreground">
       <TopBar progress={progress} />
-      <main className="relative z-10 mx-auto max-w-5xl px-4 pt-20 pb-24 sm:px-6 sm:pt-24 sm:pb-32 md:px-8">
+      <main className="relative z-10 mx-auto w-full max-w-5xl flex-1 px-4 pt-20 pb-16 sm:px-6 sm:pt-24 sm:pb-20 md:px-8">
         {stage === "intro" && <Intro content={content} onStart={begin} />}
-        {stage === "proposal" && <Proposal content={content} onContinue={() => { setProposalSeen(true); setStage("survey"); }} />}
+        {stage === "proposal" && (
+          <Proposal
+            content={content}
+            onBack={back}
+            onContinue={() => setStage("survey")}
+          />
+        )}
         {stage === "survey" && currentQ && (
           <QuestionView
             key={currentQ.id}
@@ -139,6 +164,7 @@ function Survey() {
     </div>
   );
 }
+
 
 /* ---------------- TOP BAR ---------------- */
 
@@ -210,7 +236,7 @@ function Intro({ content, onStart }: { content: PageContent; onStart: () => void
 
 /* ---------------- PROPOSAL ---------------- */
 
-function Proposal({ content, onContinue }: { content: PageContent; onContinue: () => void }) {
+function Proposal({ content, onBack, onContinue }: { content: PageContent; onBack: () => void; onContinue: () => void }) {
   const c = content.proposal;
   return (
     <section className="anim-fade-up relative mx-auto max-w-3xl pt-2 sm:pt-4">
@@ -239,17 +265,27 @@ function Proposal({ content, onContinue }: { content: PageContent; onContinue: (
           {c.closing.map((p, i) => (<p key={i}>{p}</p>))}
         </div>
 
-        <button
-          onClick={onContinue}
-          className="group mt-8 inline-flex items-center gap-3 rounded-full bg-grape px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-8px_var(--grape)] transition-all hover:scale-[1.02] hover:bg-ink sm:mt-10 sm:px-7 sm:py-4"
-        >
-          {c.ctaLabel}
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2} />
-        </button>
+        <div className="mt-8 flex items-center justify-between gap-3 border-t border-border pt-6 sm:mt-10">
+          <button
+            onClick={onBack}
+            className="group inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:px-4"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" strokeWidth={2} />
+            Anterior
+          </button>
+          <button
+            onClick={onContinue}
+            className="group inline-flex items-center gap-3 rounded-full bg-grape px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-8px_var(--grape)] transition-all hover:scale-[1.02] hover:bg-ink sm:px-7 sm:py-4"
+          >
+            {c.ctaLabel}
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2} />
+          </button>
+        </div>
       </div>
     </section>
   );
 }
+
 
 function ExampleCard({ color, label, text }: { color: "mint" | "bubble" | "sky" | "lemon"; label: string; text: string }) {
   const bg = { mint: "bg-mint/15", bubble: "bg-bubble/15", sky: "bg-sky/15", lemon: "bg-lemon/25" }[color];
@@ -314,6 +350,14 @@ function QuestionView({
     }
   })();
 
+  const nextBtnRef = useRef<HTMLDivElement>(null);
+  const scrollToNext = () => {
+    // Wait a tick so the DOM (e.g. contact block) can render before scrolling.
+    setTimeout(() => {
+      nextBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 60);
+  };
+
   return (
     <section className="anim-fade-up mx-auto max-w-2xl">
       <div className={frameClass}>
@@ -323,6 +367,9 @@ function QuestionView({
             <span className="inline-flex rounded-full border border-border bg-card px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
               Opcional
             </span>
+          )}
+          {q.showInfo && q.info && q.info.trim().length > 0 && (
+            <InfoBubble content={q.info} />
           )}
         </div>
 
@@ -338,13 +385,21 @@ function QuestionView({
             <Dropdown q={q} value={answers[q.id] as string | undefined} onChange={set} extras={extras} setExtras={setExtras} />
           )}
           {q.type === "single" && !q.asDropdown && (
-            <SingleList q={q} value={answers[q.id] as string | undefined} onChange={set} />
+            <SingleList
+              q={q}
+              value={answers[q.id] as string | undefined}
+              onChange={(v) => { set(v); scrollToNext(); }}
+            />
           )}
           {q.type === "multi" && (
             <MultiList q={q} value={(answers[q.id] as string[]) || []} onChange={set} />
           )}
           {q.type === "scale" && (
-            <ScalePicker q={q} value={answers[q.id] as number | undefined} onChange={set} />
+            <ScalePicker
+              q={q}
+              value={answers[q.id] as number | undefined}
+              onChange={(v) => { set(v); scrollToNext(); }}
+            />
           )}
           {q.type === "open" && (
             <OpenInput q={q} value={(answers[q.id] as string) || ""} onChange={set} />
@@ -376,18 +431,71 @@ function QuestionView({
           </div>
         )}
 
-        <NavBar onBack={onBack} onNext={onNext} canAdvance={canAdvance} last={index === total - 1} />
+        <div ref={nextBtnRef}>
+          <NavBar onBack={onBack} onNext={onNext} canAdvance={canAdvance} last={index === total - 1} />
+        </div>
       </div>
     </section>
   );
 }
+
+/* ---------------- INFO BUBBLE (help popover) ---------------- */
+
+function InfoBubble({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Informação de ajuda"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-grape hover:text-grape"
+      >
+        <HelpCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
+      </button>
+      {open && (
+        <div className="anim-fade-up absolute left-0 top-8 z-20 w-[min(320px,80vw)] rounded-2xl border border-border bg-card p-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.25)]">
+          <div className="flex items-start justify-between gap-2">
+            <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-grape">Ajuda</div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Fechar"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          </div>
+          <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-foreground/85">
+            {content}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 /* ---------------- INPUTS ---------------- */
 
 function SingleList({ q, value, onChange }: { q: Extract<Question, { type: "single" }>; value?: string; onChange: (v: string) => void }) {
   return (
     <div className="flex flex-col gap-2.5">
-      {q.options.map((o, idx) => {
+      {q.options.map((o) => {
         const selected = value === o.code;
         return (
           <button
@@ -402,10 +510,14 @@ function SingleList({ q, value, onChange }: { q: Extract<Question, { type: "sing
           >
             <div className="flex items-center gap-3">
               <span className={[
-                "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-[11px] font-semibold transition-all",
-                selected ? "border-white/70 bg-white text-grape" : "border-border bg-secondary text-muted-foreground",
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all",
+                selected ? "border-white bg-white" : "border-border bg-secondary",
               ].join(" ")}>
-                {String.fromCharCode(65 + idx)}
+                {selected ? (
+                  <span className="h-2.5 w-2.5 rounded-full bg-grape" />
+                ) : (
+                  <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40" />
+                )}
               </span>
               <span className="min-w-0 flex-1 text-[14px] font-medium leading-snug sm:text-[15px]">{o.label}</span>
               {selected && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}
@@ -640,15 +752,44 @@ function Done({ content }: { content: PageContent }) {
 /* ---------------- FOOTER ---------------- */
 
 function Footer() {
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const url = typeof window !== "undefined" ? window.location.origin + "/" : "";
+    const shareData = { title: "Pesquisa Oficial Guivos", text: "Contribua com a pesquisa da Guivos.", url };
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share(shareData);
+        return;
+      }
+    } catch {
+      /* fall through to copy */
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch {
+      /* ignore */
+    }
+  };
   return (
-    <footer className="relative z-10 border-t border-border py-5">
-      <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-1.5 px-4 text-[11px] text-muted-foreground sm:flex-row sm:px-6 sm:text-xs md:px-8">
-        <span>Pesquisa Oficial Guivos</span>
+    <footer className="relative z-10 mt-auto border-t border-border py-5">
+      <div className="mx-auto grid max-w-5xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-4 text-[11px] text-muted-foreground sm:px-6 sm:text-xs md:px-8">
+        <span className="min-w-0 truncate">Pesquisa Oficial Guivos</span>
+        <button
+          type="button"
+          onClick={share}
+          aria-label="Compartilhar a pesquisa"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-grape hover:text-grape sm:text-xs"
+        >
+          <Share2 className="h-3.5 w-3.5" strokeWidth={1.75} />
+          {copied ? "Link copiado" : "Compartilhar"}
+        </button>
         <a
           href="https://rodrigo.run"
           target="_blank"
           rel="noopener noreferrer"
-          className="tracking-wide text-muted-foreground/70 transition-colors hover:text-grape"
+          className="justify-self-end tracking-wide text-muted-foreground/70 transition-colors hover:text-grape"
         >
           DEV — rodrigo.run
         </a>

@@ -17,6 +17,8 @@ export type Base = {
   hidden?: boolean;
   titleStyle?: TitleStyle;
   frame?: Frame;
+  info?: string;
+  showInfo?: boolean;
 };
 
 export type Question =

@@ -350,6 +350,14 @@ function QuestionView({
     }
   })();
 
+  const nextBtnRef = useRef<HTMLDivElement>(null);
+  const scrollToNext = () => {
+    // Wait a tick so the DOM (e.g. contact block) can render before scrolling.
+    setTimeout(() => {
+      nextBtnRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    }, 60);
+  };
+
   return (
     <section className="anim-fade-up mx-auto max-w-2xl">
       <div className={frameClass}>
@@ -359,6 +367,9 @@ function QuestionView({
             <span className="inline-flex rounded-full border border-border bg-card px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
               Opcional
             </span>
+          )}
+          {q.showInfo && q.info && q.info.trim().length > 0 && (
+            <InfoBubble content={q.info} />
           )}
         </div>
 
@@ -374,13 +385,21 @@ function QuestionView({
             <Dropdown q={q} value={answers[q.id] as string | undefined} onChange={set} extras={extras} setExtras={setExtras} />
           )}
           {q.type === "single" && !q.asDropdown && (
-            <SingleList q={q} value={answers[q.id] as string | undefined} onChange={set} />
+            <SingleList
+              q={q}
+              value={answers[q.id] as string | undefined}
+              onChange={(v) => { set(v); scrollToNext(); }}
+            />
           )}
           {q.type === "multi" && (
             <MultiList q={q} value={(answers[q.id] as string[]) || []} onChange={set} />
           )}
           {q.type === "scale" && (
-            <ScalePicker q={q} value={answers[q.id] as number | undefined} onChange={set} />
+            <ScalePicker
+              q={q}
+              value={answers[q.id] as number | undefined}
+              onChange={(v) => { set(v); scrollToNext(); }}
+            />
           )}
           {q.type === "open" && (
             <OpenInput q={q} value={(answers[q.id] as string) || ""} onChange={set} />
@@ -412,11 +431,64 @@ function QuestionView({
           </div>
         )}
 
-        <NavBar onBack={onBack} onNext={onNext} canAdvance={canAdvance} last={index === total - 1} />
+        <div ref={nextBtnRef}>
+          <NavBar onBack={onBack} onNext={onNext} canAdvance={canAdvance} last={index === total - 1} />
+        </div>
       </div>
     </section>
   );
 }
+
+/* ---------------- INFO BUBBLE (help popover) ---------------- */
+
+function InfoBubble({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [open]);
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Informação de ajuda"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:border-grape hover:text-grape"
+      >
+        <HelpCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
+      </button>
+      {open && (
+        <div className="anim-fade-up absolute left-0 top-8 z-20 w-[min(320px,80vw)] rounded-2xl border border-border bg-card p-4 shadow-[0_20px_50px_-20px_rgba(0,0,0,0.25)]">
+          <div className="flex items-start justify-between gap-2">
+            <div className="text-[10px] font-mono uppercase tracking-[0.22em] text-grape">Ajuda</div>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Fechar"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" strokeWidth={2} />
+            </button>
+          </div>
+          <p className="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-foreground/85">
+            {content}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 /* ---------------- INPUTS ---------------- */
 

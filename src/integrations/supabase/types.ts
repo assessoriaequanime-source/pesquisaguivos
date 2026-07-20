@@ -14,7 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      survey_responses: {
+        Row: {
+          id: string
+          submitted_at: string
+          duration_sec: number
+          answers: Json
+          extras: Json
+          contact_name: string | null
+          contact_value: string | null
+          created_at: string
+        }
+        Insert: {
+          id: string
+          submitted_at?: string
+          duration_sec?: number
+          answers?: Json
+          extras?: Json
+          contact_name?: string | null
+          contact_value?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          submitted_at?: string
+          duration_sec?: number
+          answers?: Json
+          extras?: Json
+          contact_name?: string | null
+          contact_value?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      survey_config: {
+        Row: {
+          key: string
+          data: Json
+          updated_at: string
+        }
+        Insert: {
+          key: string
+          data: Json
+          updated_at?: string
+        }
+        Update: {
+          key?: string
+          data?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

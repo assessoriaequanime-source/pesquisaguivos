@@ -1,0 +1,16 @@
+node_modules
+.git
+.output
+.vinxi
+.tanstack
+.nitro
+dist
+dist-ssr
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+.lovable
+.vscode
+.idea

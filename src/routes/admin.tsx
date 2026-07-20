@@ -31,10 +31,14 @@ import {
   getResponses,
   newQuestion,
   nextOptionCode,
+  refreshContentFromServer,
+  refreshQuestionsFromServer,
+  refreshResponsesFromServer,
   resetContent,
   resetQuestions,
   saveContent,
   saveQuestions,
+  setAdminPassword,
   visibleQuestions,
   type Frame,
   type PageContent,
@@ -67,7 +71,10 @@ function Admin() {
   const [responses, setResponses] = useState<ResponseRecord[]>([]);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && sessionStorage.getItem(AUTH_KEY) === "1") {
+    if (typeof window === "undefined") return;
+    const stored = sessionStorage.getItem(AUTH_KEY);
+    if (stored) {
+      setAdminPassword(stored);
       setAuthed(true);
     }
   }, []);
@@ -77,14 +84,27 @@ function Admin() {
     setQuestions(getQuestions());
     setContent(getContent());
     setResponses(getResponses());
+    void refreshResponsesFromServer().then((list) => { if (list) setResponses(list); });
+    void refreshQuestionsFromServer().then((qs) => { if (qs) setQuestions(qs); });
+    void refreshContentFromServer().then((c) => { if (c) setContent(c); });
   }, [authed]);
 
   const reloadResponses = () => setResponses(getResponses());
   const reloadQuestions = () => setQuestions(getQuestions());
 
-  if (!authed) return <AuthGate onSuccess={() => setAuthed(true)} />;
+  if (!authed) {
+    return (
+      <AuthGate
+        onSuccess={(pw) => {
+          setAdminPassword(pw);
+          setAuthed(true);
+        }}
+      />
+    );
+  }
 
   const visibleCount = visibleQuestions(questions).length;
+
 
   return (
     <div className="min-h-screen bg-secondary/40">
@@ -155,14 +175,14 @@ function Admin() {
 
 /* ---------------- AUTH GATE ---------------- */
 
-function AuthGate({ onSuccess }: { onSuccess: () => void }) {
+function AuthGate({ onSuccess }: { onSuccess: (password: string) => void }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState(false);
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pw === ADMIN_PASSWORD) {
-      sessionStorage.setItem(AUTH_KEY, "1");
-      onSuccess();
+      sessionStorage.setItem(AUTH_KEY, pw);
+      onSuccess(pw);
     } else {
       setErr(true);
     }

@@ -1,0 +1,77 @@
+# Stack local/self-hosted: Postgres + PostgREST + Kong (API gateway) + app.
+#
+# Propositalmente enxuto: sem GoTrue (auth), Storage, Realtime, Functions ou
+# Analytics — a aplicação não usa nenhum desses recursos hoje, e menos
+# serviços expostos = menos superfície de ataque.
+#
+# Uso:
+#   1) node deploy/generate-keys.mjs   -> gera os segredos
+#   2) cp .env.example .env            -> cole os segredos gerados
+#   3) docker compose up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      AUTHENTICATOR_PASSWORD: ${AUTHENTICATOR_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/db-init/01-roles.sh:/docker-entrypoint-initdb.d/01-roles.sh:ro
+      - ./supabase/migrations/0001_survey_schema.sql:/docker-entrypoint-initdb.d/02-survey-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rest:
+    image: postgrest/postgrest:latest
+    restart: unless-stopped
+    environment:
+      PGRST_DB_URI: postgres://authenticator:${AUTHENTICATOR_PASSWORD}@db:5432/postgres
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  kong:
+    image: kong:latest
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.yml
+      KONG_PLUGINS: cors,key-auth
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+    volumes:
+      - ./deploy/kong.yml:/home/kong/kong.yml.template:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        sed -e "s|\${ANON_KEY}|$$ANON_KEY|g" -e "s|\${SERVICE_ROLE_KEY}|$$SERVICE_ROLE_KEY|g" /home/kong/kong.yml.template > /home/kong/kong.yml
+        exec /docker-entrypoint.sh kong docker-start
+    ports:
+      - "${KONG_HTTP_PORT:-8000}:8000"
+    depends_on:
+      - rest
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SUPABASE_URL: http://kong:8000
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      - kong
+
+volumes:
+  pgdata:

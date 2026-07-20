@@ -1,4 +1,22 @@
-/* localStorage-backed store for Guivos VAL-002 survey */
+/* localStorage-backed store for Guivos VAL-002 survey, now mirrored to a
+   Supabase database (self-hosted or cloud) so responses and admin edits are
+   not lost when the visitor's browser storage is cleared. All reads/writes
+   below keep working exactly as before against localStorage first (so the
+   UI never blocks on the network); database sync happens in the background
+   via the functions imported from ./survey-server-fns. */
+
+import {
+  clearResponsesFn,
+  deleteResponseFn,
+  getContentFn,
+  getQuestionsFn,
+  listResponsesFn,
+  resetContentFn,
+  resetQuestionsFn,
+  saveContentFn,
+  saveQuestionsFn,
+  submitResponseFn,
+} from "./survey-server-fns";
 
 export type Option = { code: string; label: string };
 
@@ -223,10 +241,22 @@ export function getQuestions(): Question[] {
 export function saveQuestions(qs: Question[]) {
   if (typeof window === "undefined") return;
   localStorage.setItem(Q_KEY, JSON.stringify(qs));
+  const password = getAdminPassword();
+  if (password) {
+    void saveQuestionsFn({ data: { password, questions: qs } }).catch((err) => {
+      console.error("[survey] failed to save questions to database", err);
+    });
+  }
 }
 export function resetQuestions() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(Q_KEY);
+  const password = getAdminPassword();
+  if (password) {
+    void resetQuestionsFn({ data: { password } }).catch((err) => {
+      console.error("[survey] failed to reset questions in database", err);
+    });
+  }
 }
 
 export function getContent(): PageContent {
@@ -243,11 +273,24 @@ export function getContent(): PageContent {
 export function saveContent(c: PageContent) {
   if (typeof window === "undefined") return;
   localStorage.setItem(C_KEY, JSON.stringify(c));
+  const password = getAdminPassword();
+  if (password) {
+    void saveContentFn({ data: { password, content: c } }).catch((err) => {
+      console.error("[survey] failed to save content to database", err);
+    });
+  }
 }
 export function resetContent() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(C_KEY);
+  const password = getAdminPassword();
+  if (password) {
+    void resetContentFn({ data: { password } }).catch((err) => {
+      console.error("[survey] failed to reset content in database", err);
+    });
+  }
 }
+
 
 /* ---------------- helpers ---------------- */
 
@@ -345,14 +388,88 @@ export function saveResponse(r: Omit<ResponseRecord, "id" | "at">) {
   };
   list.unshift(record);
   localStorage.setItem(R_KEY, JSON.stringify(list));
+  void submitResponseFn({ data: record }).catch((err) => {
+    console.error("[survey] failed to sync response to database", err);
+  });
 }
 
 export function deleteResponse(id: string) {
   const list = getResponses().filter((r) => r.id !== id);
   localStorage.setItem(R_KEY, JSON.stringify(list));
+  const password = getAdminPassword();
+  if (password) {
+    void deleteResponseFn({ data: { password, id } }).catch((err) => {
+      console.error("[survey] failed to delete response in database", err);
+    });
+  }
 }
 
 export function clearResponses() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(R_KEY);
+  const password = getAdminPassword();
+  if (password) {
+    void clearResponsesFn({ data: { password } }).catch((err) => {
+      console.error("[survey] failed to clear responses in database", err);
+    });
+  }
 }
+
+/* ---------------- database sync ---------------- */
+
+// In-memory only (never persisted) - set once by the admin panel right after
+// a successful password check, so subsequent admin writes in this session can
+// be mirrored to the database. Never sent anywhere except the server function
+// calls in this file, over the same-origin RPC channel already used by the app.
+let adminPassword: string | null = null;
+
+export function setAdminPassword(password: string) {
+  adminPassword = password;
+}
+
+function getAdminPassword(): string | null {
+  return adminPassword;
+}
+
+export async function refreshResponsesFromServer(): Promise<ResponseRecord[] | null> {
+  const password = getAdminPassword();
+  if (!password) return null;
+  try {
+    const remote = await listResponsesFn({ data: { password } });
+    if (typeof window !== "undefined") localStorage.setItem(R_KEY, JSON.stringify(remote));
+    return remote;
+  } catch (err) {
+    console.error("[survey] failed to load responses from database", err);
+    return null;
+  }
+}
+
+export async function refreshQuestionsFromServer(): Promise<Question[] | null> {
+  try {
+    const remote = await getQuestionsFn();
+    if (remote && Array.isArray(remote) && remote.length > 0) {
+      if (typeof window !== "undefined") localStorage.setItem(Q_KEY, JSON.stringify(remote));
+      return remote;
+    }
+    return null;
+  } catch (err) {
+    console.error("[survey] failed to load questions from database", err);
+    return null;
+  }
+}
+
+export async function refreshContentFromServer(): Promise<PageContent | null> {
+  try {
+    const remote = await getContentFn();
+    if (remote) {
+      const merged = { ...DEFAULT_CONTENT, ...remote };
+      if (typeof window !== "undefined") localStorage.setItem(C_KEY, JSON.stringify(merged));
+      return merged;
+    }
+    return null;
+  } catch (err) {
+    console.error("[survey] failed to load content from database", err);
+    return null;
+  }
+}
+

@@ -6,6 +6,8 @@ import { SuccessCheck } from "@/components/SuccessCheck";
 import {
   getContent,
   getQuestions,
+  refreshContentFromServer,
+  refreshQuestionsFromServer,
   saveResponse,
   visibleQuestions,
   displayCode,
@@ -31,7 +33,8 @@ function Survey() {
   const startedAt = useRef<number>(0);
   const savedRef = useRef(false);
   const returnAfterProposalRef = useRef<number>(0);
-
+  const stageRef = useRef(stage);
+  stageRef.current = stage;
 
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
@@ -47,12 +50,28 @@ function Survey() {
   useEffect(() => {
     setAllQuestions(getQuestions());
     setContent(getContent());
+    void refreshQuestionsFromServer().then((qs) => {
+      if (qs && stageRef.current === "intro") setAllQuestions(qs);
+    });
+    void refreshContentFromServer().then((c) => {
+      if (c && stageRef.current === "intro") setContent(c);
+    });
   }, []);
 
   const questions = useMemo(() => visibleQuestions(allQuestions), [allQuestions]);
   const total = questions.length;
   const currentQ = questions[i];
   const triggerBeforeId = content?.proposal.triggerBeforeId ?? 11;
+
+  useEffect(() => {
+    const resetScroll = () => window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    resetScroll();
+    // Some transitions (e.g. autofocus on the open-question textarea) trigger the
+    // browser's own "scroll element into view" a tick later; re-apply once more
+    // on the next frame so that scroll always ends up at the top.
+    const raf = requestAnimationFrame(resetScroll);
+    return () => cancelAnimationFrame(raf);
+  }, [stage, i]);
 
 
   useEffect(() => {

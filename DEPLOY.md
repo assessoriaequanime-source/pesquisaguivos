@@ -26,10 +26,10 @@ O `localStorage` continua sendo a fonte imediata e o Supabase guarda uma cópia 
 - Domínio: `pesquisa.guivos.com`.
 - Diretório: `/opt/pesquisaguivos`.
 - Projeto Docker fixo: `pesquisaguivos`.
-- Porta pública: `APP_PORT=3090` em `127.0.0.1`.
+- Porta pública: `APP_PORT=3091` em `127.0.0.1`.
 - Kong, Postgres e PostgREST não expõem portas.
 
-Passos: clone o repositório em `/opt`, gere os segredos, suba com `docker compose up -d --build`, aponte o Nginx para `http://127.0.0.1:3090`, rode `nginx -t`, `systemctl reload nginx` e `certbot --nginx -d pesquisa.guivos.com`.
+Passos: clone o repositório em `/opt`, gere os segredos, suba com `docker compose up -d --build`, aponte o Nginx para `http://127.0.0.1:3091`, rode `nginx -t`, `systemctl reload nginx` e `certbot --nginx -d pesquisa.guivos.com`.
 
 ## Validação
 

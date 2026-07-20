@@ -69,7 +69,11 @@ services:
       - rest
 
   app:
-    build: .
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
     restart: unless-stopped
     env_file:
       - .env
@@ -78,7 +82,7 @@ services:
     ports:
       # Publicado só em loopback: em produção, um nginx/reverse proxy no host
       # (fora deste compose) encaminha o domínio público para 127.0.0.1:APP_PORT.
-      - "127.0.0.1:${APP_PORT:-3090}:3000"
+      - "127.0.0.1:${APP_PORT:-3091}:3000"
     depends_on:
       - kong
 

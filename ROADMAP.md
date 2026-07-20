@@ -7,7 +7,7 @@
   - `6179911` - persistência real via Supabase, infra de deploy e scroll-to-top
   - `8f384aa` - para de versionar `.env`
 - Deploy ativo na VPS: `https://pesquisa.guivos.com`
-- Stack na VPS: `pesquisaguivos` com `app` em `127.0.0.1:3090`
+- Stack na VPS: `pesquisaguivos` com `app` em `127.0.0.1:3091`
 
 ## Ponto de restauração
 

@@ -9,7 +9,7 @@
 
 ## Portas e isolamento
 
-- App: `127.0.0.1:3090 -> 3000`
+- App: `127.0.0.1:3091 -> 3000`
 - Postgres: interno ao compose, sem porta publicada
 - PostgREST: interno ao compose, sem porta publicada
 - Kong: interno ao compose, sem porta publicada
@@ -29,7 +29,7 @@
 
 ```bash
 docker compose ps
-ss -tulpn | grep -E ':3090|:80|:443'
+ss -tulpn | grep -E ':3091|:80|:443'
 docker volume ls | grep pesquisaguivos
 docker network ls | grep pesquisaguivos
 ```

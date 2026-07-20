@@ -11,16 +11,3 @@ services:
           - /rest/v1/
     plugins:
       - name: cors
-      - name: key-auth
-        config:
-          key_names:
-            - apikey
-          hide_credentials: false
-
-consumers:
-  - username: anon
-    keyauth_credentials:
-      - key: ${ANON_KEY}
-  - username: service_role
-    keyauth_credentials:
-      - key: ${SERVICE_ROLE_KEY}

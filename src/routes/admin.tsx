@@ -39,6 +39,7 @@ import {
   saveContent,
   saveQuestions,
   setAdminPassword,
+  verifyAdminPasswordFn,
   visibleQuestions,
   type Frame,
   type PageContent,
@@ -58,7 +59,7 @@ export const Route = createFileRoute("/admin")({
   }),
 });
 
-const ADMIN_PASSWORD = "guivos2026";
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "guivos2026";
 const AUTH_KEY = "guivos-admin-auth";
 
 type Tab = "overview" | "responses" | "questions" | "content";
@@ -73,10 +74,16 @@ function Admin() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const stored = sessionStorage.getItem(AUTH_KEY);
-    if (stored) {
-      setAdminPassword(stored);
-      setAuthed(true);
-    }
+    if (!stored) return;
+    void verifyAdminPasswordFn({ data: { password: stored } })
+      .then(() => {
+        setAdminPassword(stored);
+        setAuthed(true);
+      })
+      .catch(() => {
+        sessionStorage.removeItem(AUTH_KEY);
+        setAuthed(false);
+      });
   }, []);
 
   useEffect(() => {
@@ -89,7 +96,11 @@ function Admin() {
     void refreshContentFromServer().then((c) => { if (c) setContent(c); });
   }, [authed]);
 
-  const reloadResponses = () => setResponses(getResponses());
+  const reloadResponses = () => {
+    void refreshResponsesFromServer().then((list) => {
+      if (list) setResponses(list);
+    });
+  };
   const reloadQuestions = () => setQuestions(getQuestions());
 
   if (!authed) {
@@ -178,13 +189,18 @@ function Admin() {
 function AuthGate({ onSuccess }: { onSuccess: (password: string) => void }) {
   const [pw, setPw] = useState("");
   const [err, setErr] = useState(false);
-  const submit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pw === ADMIN_PASSWORD) {
+    setLoading(true);
+    try {
+      await verifyAdminPasswordFn({ data: { password: pw } });
       sessionStorage.setItem(AUTH_KEY, pw);
       onSuccess(pw);
-    } else {
+    } catch {
       setErr(true);
+    } finally {
+      setLoading(false);
     }
   };
   return (
@@ -214,9 +230,10 @@ function AuthGate({ onSuccess }: { onSuccess: (password: string) => void }) {
         )}
         <button
           type="submit"
+          disabled={loading}
           className="mt-5 w-full rounded-full bg-grape px-5 py-3 text-sm font-semibold text-white transition-all hover:scale-[1.01] hover:bg-ink"
         >
-          Entrar
+          {loading ? "Verificando..." : "Entrar"}
         </button>
         <Link to="/" className="mt-4 block text-center text-xs text-muted-foreground hover:text-grape">
           Voltar à pesquisa

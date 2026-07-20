@@ -26,6 +26,13 @@ const responseSchema = z.object({
 
 const passwordSchema = z.object({ password: z.string().min(1).max(256) });
 
+export const verifyAdminPasswordFn = createServerFn({ method: "POST" })
+  .validator((data: { password: string }) => passwordSchema.parse(data))
+  .handler(async ({ data }) => {
+    checkAdminPassword(data.password);
+    return { ok: true as const };
+  });
+
 export const submitResponseFn = createServerFn({ method: "POST" })
   .validator((data: ResponseRecord) => responseSchema.parse(data))
   .handler(async ({ data }) => {

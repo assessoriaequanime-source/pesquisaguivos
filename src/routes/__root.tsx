@@ -86,8 +86,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:title", content: "Construindo a Guivos  Pesquisa Conceitual" },
       { name: "twitter:description", content: "Ajude a construir uma plataforma pensada para acompanhar a evolução das pessoas ao longo da vida. 5 a 7 minutos." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/juxPcRc0bEOC2ItdM5YgQEjCCeH3/social-images/social-1784444588208-assinaturas-logo-guivos-2.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/juxPcRc0bEOC2ItdM5YgQEjCCeH3/social-images/social-1784444588208-assinaturas-logo-guivos-2.webp" },
+      { property: "og:image", content: "https://pesquisa.guivos.com/social-share.svg" },
+      { name: "twitter:image", content: "https://pesquisa.guivos.com/social-share.svg" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

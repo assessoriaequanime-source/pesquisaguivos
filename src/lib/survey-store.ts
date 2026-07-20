@@ -786,8 +786,9 @@ export async function refreshResponsesFromServer(): Promise<ResponseRecord[] | n
   if (!password) return null;
   try {
     const remote = await listResponsesFn({ data: { password } });
+    if (!Array.isArray(remote)) return null;
     if (typeof window !== "undefined") localStorage.setItem(R_KEY, JSON.stringify(remote));
-    return remote;
+    return remote as ResponseRecord[];
   } catch (err) {
     console.error("[survey] failed to load responses from database", err);
     return null;

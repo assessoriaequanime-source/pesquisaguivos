@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Guivos</title>
+  <desc id="desc">Social share image for the Guivos survey</desc>
+  <rect width="1200" height="630" fill="#000000"/>
+  <circle cx="602" cy="172" r="22" fill="#ffd500"/>
+  <g fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle">
+    <text x="600" y="390" font-size="220" letter-spacing="-8">guivos</text>
+    <text x="1020" y="404" font-size="54">®</text>
+  </g>
+</svg>

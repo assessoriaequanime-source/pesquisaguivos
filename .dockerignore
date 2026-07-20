@@ -11,6 +11,6 @@ npm-debug.log*
 .env
 .env.*
 !.env.example
-.lovable
+.project-state
 .vscode
 .idea

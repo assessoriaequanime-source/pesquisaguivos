@@ -236,7 +236,7 @@ function Intro({ content, onStart }: { content: PageContent; onStart: () => void
 
 /* ---------------- PROPOSAL ---------------- */
 
-function Proposal({ content, onContinue }: { content: PageContent; onContinue: () => void }) {
+function Proposal({ content, onBack, onContinue }: { content: PageContent; onBack: () => void; onContinue: () => void }) {
   const c = content.proposal;
   return (
     <section className="anim-fade-up relative mx-auto max-w-3xl pt-2 sm:pt-4">
@@ -265,17 +265,27 @@ function Proposal({ content, onContinue }: { content: PageContent; onContinue: (
           {c.closing.map((p, i) => (<p key={i}>{p}</p>))}
         </div>
 
-        <button
-          onClick={onContinue}
-          className="group mt-8 inline-flex items-center gap-3 rounded-full bg-grape px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-8px_var(--grape)] transition-all hover:scale-[1.02] hover:bg-ink sm:mt-10 sm:px-7 sm:py-4"
-        >
-          {c.ctaLabel}
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2} />
-        </button>
+        <div className="mt-8 flex items-center justify-between gap-3 border-t border-border pt-6 sm:mt-10">
+          <button
+            onClick={onBack}
+            className="group inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground sm:px-4"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" strokeWidth={2} />
+            Anterior
+          </button>
+          <button
+            onClick={onContinue}
+            className="group inline-flex items-center gap-3 rounded-full bg-grape px-6 py-3.5 text-sm font-semibold text-white shadow-[0_10px_30px_-8px_var(--grape)] transition-all hover:scale-[1.02] hover:bg-ink sm:px-7 sm:py-4"
+          >
+            {c.ctaLabel}
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" strokeWidth={2} />
+          </button>
+        </div>
       </div>
     </section>
   );
 }
+
 
 function ExampleCard({ color, label, text }: { color: "mint" | "bubble" | "sky" | "lemon"; label: string; text: string }) {
   const bg = { mint: "bg-mint/15", bubble: "bg-bubble/15", sky: "bg-sky/15", lemon: "bg-lemon/25" }[color];

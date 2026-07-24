@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Copy,
@@ -54,6 +55,7 @@ import {
   buildSurveyXlsxExport,
 } from "@/lib/survey-csv-export";
 import { verifyAdminPasswordFn } from "@/lib/survey-server-fns";
+import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
@@ -126,6 +128,7 @@ function Admin() {
 
   return (
     <div className="min-h-screen bg-secondary/40">
+      <Toaster position="bottom-right" richColors />
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-xl">
         <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:flex sm:justify-between sm:px-6 sm:py-4 md:px-8">
           <Link to="/" className="flex min-w-0 items-center gap-2.5">
@@ -396,39 +399,64 @@ function ResponsesTab({
   onReload: () => void;
 }) {
   const [selected, setSelected] = useState<ResponseRecord | null>(null);
+  const [exporting, setExporting] = useState<"csv" | "json" | "xlsx" | null>(null);
 
-  const exportCSV = () => {
-    const filePrefix = buildSurveyExportFilePrefix();
-    const { csv } = buildSurveyCsvExport({
-      responses,
-      questions,
-      fallbackQuestions: getQuestions(),
-    });
-    downloadFile(csv, `${filePrefix}.csv`, "text/csv;charset=utf-8");
+  const exportCSV = async () => {
+    setExporting("csv");
+    try {
+      const filePrefix = buildSurveyExportFilePrefix();
+      const { csv } = buildSurveyCsvExport({
+        responses,
+        questions,
+        fallbackQuestions: getQuestions(),
+      });
+      downloadFile(csv, `${filePrefix}.csv`, "text/csv;charset=utf-8");
+    } catch (err) {
+      console.error("[exportCSV]", err);
+      toast.error("Falha ao gerar CSV. Tente novamente.");
+    } finally {
+      setExporting(null);
+    }
   };
 
-  const exportJSON = () => {
-    const filePrefix = buildSurveyExportFilePrefix();
-    const { json } = buildSurveyJsonExport({
-      responses,
-      questions,
-      fallbackQuestions: getQuestions(),
-    });
-    downloadFile(json, `${filePrefix}.json`, "application/json;charset=utf-8");
+  const exportJSON = async () => {
+    setExporting("json");
+    try {
+      const filePrefix = buildSurveyExportFilePrefix();
+      const { json } = buildSurveyJsonExport({
+        responses,
+        questions,
+        fallbackQuestions: getQuestions(),
+      });
+      downloadFile(json, `${filePrefix}.json`, "application/json;charset=utf-8");
+    } catch (err) {
+      console.error("[exportJSON]", err);
+      toast.error("Falha ao gerar JSON. Tente novamente.");
+    } finally {
+      setExporting(null);
+    }
   };
 
-  const exportXLSX = () => {
-    const filePrefix = buildSurveyExportFilePrefix();
-    const { bytes } = buildSurveyXlsxExport({
-      responses,
-      questions,
-      fallbackQuestions: getQuestions(),
-    });
-    downloadFile(
-      bytes,
-      `${filePrefix}.xlsx`,
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    );
+  const exportXLSX = async () => {
+    setExporting("xlsx");
+    try {
+      const filePrefix = buildSurveyExportFilePrefix();
+      const { bytes } = buildSurveyXlsxExport({
+        responses,
+        questions,
+        fallbackQuestions: getQuestions(),
+      });
+      downloadFile(
+        bytes,
+        `${filePrefix}.xlsx`,
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+    } catch (err) {
+      console.error("[exportXLSX]", err);
+      toast.error("Falha ao gerar XLSX. Tente novamente.");
+    } finally {
+      setExporting(null);
+    }
   };
 
   return (
@@ -437,24 +465,34 @@ function ResponsesTab({
         <h2 className="font-display text-xl font-semibold sm:text-2xl">Respostas coletadas</h2>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={exportCSV}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm"
+            type="button"
+            onClick={() => void exportCSV()}
+            disabled={exporting !== null}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
           >
-            <Download className="h-4 w-4" strokeWidth={2} /> CSV
+            <Download className="h-4 w-4" strokeWidth={2} />
+            {exporting === "csv" ? "Gerando…" : "CSV"}
           </button>
           <button
-            onClick={exportJSON}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm"
+            type="button"
+            onClick={() => void exportJSON()}
+            disabled={exporting !== null}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
           >
-            <Download className="h-4 w-4" strokeWidth={2} /> JSON
+            <Download className="h-4 w-4" strokeWidth={2} />
+            {exporting === "json" ? "Gerando…" : "JSON"}
           </button>
           <button
-            onClick={exportXLSX}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm"
+            type="button"
+            onClick={() => void exportXLSX()}
+            disabled={exporting !== null}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape disabled:cursor-not-allowed disabled:opacity-50 sm:px-4 sm:text-sm"
           >
-            <Download className="h-4 w-4" strokeWidth={2} /> XLSX
+            <Download className="h-4 w-4" strokeWidth={2} />
+            {exporting === "xlsx" ? "Gerando…" : "XLSX"}
           </button>
           <button
+            type="button"
             onClick={() => {
               if (confirm("Apagar todas as respostas? Esta ação não pode ser desfeita.")) {
                 clearResponses();
@@ -1580,11 +1618,16 @@ function TxtArea({
 /* ---------------- helpers ---------------- */
 
 function downloadFile(content: string | Uint8Array | ArrayBuffer, name: string, type: string) {
+  if (typeof window === "undefined" || typeof document === "undefined") return;
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = name;
+  a.style.cssText = "position:fixed;top:-100px;left:-100px;opacity:0;pointer-events:none";
+  document.body.appendChild(a);
   a.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+  // Revoke after a short delay so the browser has time to start the download
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

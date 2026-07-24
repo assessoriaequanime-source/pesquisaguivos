@@ -95,8 +95,39 @@ export function normalizeSurveyExportData({
 }: ExportInput): CanonicalDataset {
   const resolvedQuestions = resolveSchemaQuestions(questions, fallbackQuestions);
   validateQuestionSet(resolvedQuestions);
-  const schemaQuestions = resolvedQuestions.map(toCanonicalSchema);
-  const questionMap = new Map<number, Question>(resolvedQuestions.map((q) => [q.id, q] as const));
+
+  // Collect question IDs present in responses but absent from schema (orphan answers).
+  // These are created as synthetic "open" entries so historical data is not lost.
+  const schemaIdSet = new Set(resolvedQuestions.map((q) => q.id));
+  const orphanIdSet = new Set<number>();
+  for (const record of responses) {
+    for (const key of Object.keys(record.answers ?? {})) {
+      const id = parseInt(key, 10);
+      const val = record.answers[key];
+      if (
+        Number.isInteger(id) &&
+        id > 0 &&
+        !schemaIdSet.has(id) &&
+        val !== undefined &&
+        val !== null &&
+        val !== ""
+      ) {
+        orphanIdSet.add(id);
+      }
+    }
+  }
+
+  // Merge schema questions with synthetic entries for orphan IDs, then sort by ID
+  // for a deterministic column order regardless of how the admin reordered questions.
+  const allQuestions: Question[] = [...resolvedQuestions];
+  for (const id of [...orphanIdSet].sort((a, b) => a - b)) {
+    console.warn(`[survey-export] Orphan answer for question ${id} — adding synthetic open entry`);
+    allQuestions.push(makeSyntheticQuestion(id));
+  }
+  allQuestions.sort((a, b) => a.id - b.id);
+
+  const schemaQuestions = allQuestions.map(toCanonicalSchema);
+  const questionMap = new Map<number, Question>(allQuestions.map((q) => [q.id, q] as const));
   const questionario = Object.fromEntries(
     schemaQuestions.map((item) => [
       item.key,
@@ -222,6 +253,18 @@ export function buildSurveyExportFilePrefix(date = new Date()): string {
   return `guivos-${QUESTIONNAIRE_CODE}-respostas-${yyyy}-${mm}-${dd}`;
 }
 
+function makeSyntheticQuestion(id: number): Question {
+  return {
+    id,
+    code: String(id),
+    section: "Z",
+    sectionLabel: "Legado",
+    type: "open",
+    optional: true,
+    placeholder: "",
+  } as Question & { type: "open" };
+}
+
 function resolveSchemaQuestions(questions: Question[], fallbackQuestions: Question[]): Question[] {
   if (questions.length > 0) return questions;
   return fallbackQuestions;
@@ -239,25 +282,36 @@ function validateQuestionSet(questions: Question[]): void {
   if (uniqueIds.size !== ids.length) {
     throw new Error("Duplicate official question id detected");
   }
-  const sorted = [...uniqueIds].sort((a, b) => a - b);
-  const expected = [...EXPECTED_QUESTION_IDS];
-  if (sorted.length !== expected.length || sorted.some((id, idx) => id !== expected[idx])) {
-    throw new Error("Question schema must contain official questions P01..P22");
+  // Canonical P01..P22 check is now a warning so that admin-modified schemas
+  // (questions added, removed or reordered via the panel) do not block exports.
+  const missing = EXPECTED_QUESTION_IDS.filter((id) => !uniqueIds.has(id));
+  const extra = [...uniqueIds]
+    .sort((a, b) => a - b)
+    .filter((id) => !EXPECTED_QUESTION_IDS.includes(id));
+  if (missing.length > 0) {
+    console.warn(
+      `[survey-export] Schema is missing official questions: ${missing.map((id) => `P${String(id).padStart(2, "0")}`).join(", ")}`,
+    );
   }
-
+  if (extra.length > 0) {
+    console.warn(
+      `[survey-export] Schema has extra questions beyond P01..P22: ${extra.map((id) => `P${String(id).padStart(2, "0")}`).join(", ")}`,
+    );
+  }
+  // Option code format: warn but never throw — codes may differ in modified schemas.
   for (const question of questions) {
     if (question.type === "single" || question.type === "multi") {
       for (const option of question.options) {
         const match = /^(\d+)\.(\d+)$/.exec(option.code);
         if (!match) {
-          throw new Error(
-            `Invalid official option code format on question ${question.id}: ${option.code}`,
+          console.warn(
+            `[survey-export] Non-standard option code on Q${question.id}: "${option.code}"`,
           );
+          continue;
         }
-        const optionQuestionNumber = Number(match[1]);
-        if (optionQuestionNumber !== question.id) {
-          throw new Error(
-            `Option code prefix mismatch on question ${question.id}: ${option.code} belongs to ${optionQuestionNumber}`,
+        if (Number(match[1]) !== question.id) {
+          console.warn(
+            `[survey-export] Option code prefix mismatch on Q${question.id}: "${option.code}"`,
           );
         }
       }
@@ -319,7 +373,16 @@ function normalizeSurveyResponse(
   for (const schemaQuestion of schemaQuestions) {
     const question = questionMap.get(schemaQuestion.numero);
     if (!question) {
-      throw new Error(`Missing question definition for ${schemaQuestion.key}`);
+      // Defensive: should never happen since questionMap includes synthetic questions.
+      console.warn(
+        `[survey-export] Missing question definition for ${schemaQuestion.key} — skipping`,
+      );
+      perguntas[schemaQuestion.key] = {
+        numero: schemaQuestion.numero,
+        codigo: null,
+        resposta: null,
+      };
+      continue;
     }
     const rawAnswer = answerFor(record, schemaQuestion.numero);
     perguntas[schemaQuestion.key] = normalizeQuestionAnswer(question, rawAnswer, extras);
@@ -354,7 +417,17 @@ function normalizeQuestionAnswer(
   extras: Record<string, string>,
 ): CanonicalAnswer {
   if (question.type === "open") {
-    const text = normalizeOpenAnswer(rawAnswer);
+    // Coerce any raw type to string for open and synthetic questions.
+    let text: string;
+    if (typeof rawAnswer === "string") {
+      text = rawAnswer.trim();
+    } else if (Array.isArray(rawAnswer)) {
+      text = rawAnswer.filter(Boolean).join("|");
+    } else if (rawAnswer !== undefined && rawAnswer !== null && rawAnswer !== "") {
+      text = String(rawAnswer);
+    } else {
+      text = "";
+    }
     return {
       numero: question.id,
       codigo: text ? "ABERTA" : null,
@@ -366,16 +439,24 @@ function normalizeQuestionAnswer(
     if (rawAnswer === undefined || rawAnswer === null || rawAnswer === "") {
       return { numero: question.id, codigo: null, resposta: null };
     }
-    if (typeof rawAnswer !== "number" || !Number.isFinite(rawAnswer)) {
-      throw new Error(`Invalid scale answer for question ${question.id}`);
+    const asNum = typeof rawAnswer === "number" ? rawAnswer : Number(rawAnswer);
+    if (!Number.isFinite(asNum)) {
+      console.warn(
+        `[survey-export] Non-numeric scale answer for question ${question.id}: ${String(rawAnswer)}`,
+      );
+      return { numero: question.id, codigo: null, resposta: null };
     }
-    if (rawAnswer < question.min || rawAnswer > question.max) {
-      throw new Error(`Out-of-range scale answer for question ${question.id}: ${rawAnswer}`);
+    if (asNum < question.min || asNum > question.max) {
+      console.warn(
+        `[survey-export] Out-of-range scale answer for question ${question.id}: ${asNum}`,
+      );
+      const clamped = Math.max(question.min, Math.min(question.max, asNum));
+      return { numero: question.id, codigo: `${question.id}.${clamped}`, resposta: clamped };
     }
     return {
       numero: question.id,
-      codigo: `${question.id}.${rawAnswer}`,
-      resposta: rawAnswer,
+      codigo: `${question.id}.${asNum}`,
+      resposta: asNum,
     };
   }
 
@@ -384,13 +465,24 @@ function normalizeQuestionAnswer(
       return { numero: question.id, codigo: null, resposta: null };
     }
     if (typeof rawAnswer !== "string") {
-      throw new Error(`Invalid single answer payload for question ${question.id}`);
+      console.warn(`[survey-export] Unexpected single answer type for question ${question.id}`);
+      return { numero: question.id, codigo: String(rawAnswer), resposta: String(rawAnswer) };
     }
     const selected = question.options.find((option) => option.code === rawAnswer);
     if (!selected) {
-      throw new Error(`Invalid option code for question ${question.id}: ${rawAnswer}`);
+      // Option may have been removed from schema after response was recorded — export code as-is.
+      console.warn(
+        `[survey-export] Option code not in current schema for Q${question.id}: "${rawAnswer}"`,
+      );
+      return { numero: question.id, codigo: rawAnswer, resposta: rawAnswer };
     }
-    ensureOptionBelongsToQuestion(question.id, selected.code);
+    // Warn (not throw) on code prefix mismatch
+    const match = /^(\d+)\.(\d+)$/.exec(selected.code);
+    if (match && Number(match[1]) !== question.id) {
+      console.warn(
+        `[survey-export] Option code prefix mismatch for Q${question.id}: "${selected.code}"`,
+      );
+    }
     const outroTexto = question.extra?.key
       ? normalizeFreeText(extras[question.extra.key] ?? "")
       : null;
@@ -403,27 +495,38 @@ function normalizeQuestionAnswer(
     };
   }
 
+  // multi
   if (rawAnswer === undefined || rawAnswer === null || rawAnswer === "") {
     return { numero: question.id, codigos: null, respostas: null };
   }
   if (!Array.isArray(rawAnswer)) {
-    throw new Error(`Invalid multi answer payload for question ${question.id}`);
+    console.warn(`[survey-export] Unexpected multi answer type for question ${question.id}`);
+    return { numero: question.id, codigos: null, respostas: null };
   }
   if (rawAnswer.length === 0) {
     return { numero: question.id, codigos: null, respostas: null };
   }
 
-  const codigos = rawAnswer.map((item) => {
-    if (typeof item !== "string" || item.length === 0) {
-      throw new Error(`Invalid multi option code for question ${question.id}`);
-    }
-    ensureOptionBelongsToQuestion(question.id, item);
-    return item;
-  });
+  const codigos = rawAnswer
+    .filter((item) => typeof item === "string" && (item as string).length > 0)
+    .map((item) => {
+      const code = item as string;
+      // Warn on prefix mismatch but don't throw
+      const match = /^(\d+)\.(\d+)$/.exec(code);
+      if (match && Number(match[1]) !== question.id) {
+        console.warn(
+          `[survey-export] Multi option code prefix mismatch for Q${question.id}: "${code}"`,
+        );
+      }
+      return code;
+    });
   const respostas = codigos.map((codigo) => {
     const option = question.options.find((entry) => entry.code === codigo);
     if (!option) {
-      throw new Error(`Invalid option code for question ${question.id}: ${codigo}`);
+      console.warn(
+        `[survey-export] Multi option code not in current schema for Q${question.id}: "${codigo}"`,
+      );
+      return codigo;
     }
     return option.label;
   });
@@ -434,11 +537,17 @@ function normalizeQuestionAnswer(
   };
 }
 
+// Kept for potential future use; now only warns instead of throwing.
 function ensureOptionBelongsToQuestion(questionId: number, code: string): void {
   const match = /^(\d+)\.(\d+)$/.exec(code);
-  if (!match) throw new Error(`Invalid option code format: ${code}`);
+  if (!match) {
+    console.warn(`[survey-export] Non-standard option code format: "${code}"`);
+    return;
+  }
   if (Number(match[1]) !== questionId) {
-    throw new Error(`Option code prefix mismatch for question ${questionId}: ${code}`);
+    console.warn(
+      `[survey-export] Option code prefix mismatch for question ${questionId}: "${code}"`,
+    );
   }
 }
 

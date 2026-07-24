@@ -315,14 +315,17 @@ describe("survey export normalization", () => {
     assert.equal(getCsvCell(rows, "percentual_respondido"), "18.2%");
   });
 
-  test("rejects code from another question", () => {
+  test("tolerates response with cross-question option code (uses code as fallback)", () => {
+    // Q6 answered with "7.2" which belongs to Q7 — export must not throw
     const response = makeResponse({
       answers: { ...makeResponse().answers, 6: ["7.2"] },
     });
-    assert.throws(
-      () => buildSurveyCsvExport({ responses: [response], questions: makeQuestions() }),
-      /Option code prefix mismatch for question 6/,
+    const rows = parseCsv(
+      buildSurveyCsvExport({ responses: [response], questions: makeQuestions() }).csv,
     );
+    // Code is exported as-is; text falls back to the raw code string
+    assert.equal(getCsvCell(rows, "P06_codigo"), "7.2");
+    assert.equal(getCsvCell(rows, "P06_resposta"), "7.2");
   });
 
   test("rejects duplicated question id", () => {
@@ -334,12 +337,21 @@ describe("survey export normalization", () => {
     );
   });
 
-  test("rejects missing official question id", () => {
+  test("tolerates schema missing some official questions (exports available questions)", () => {
+    // Schema with only 21 questions (Q6 removed) — must not throw
     const questions = makeQuestions().filter((q) => q.id !== 6);
-    assert.throws(
-      () => normalizeSurveyExportData({ responses: [], questions }),
-      /Question schema must contain official questions P01..P22/,
-    );
+    const response = makeResponse({
+      answers: { ...makeResponse().answers, 6: ["6.1"] },
+    });
+    const { csv } = buildSurveyCsvExport({ responses: [response], questions });
+    const rows = parseCsv(csv);
+    // P01 and P22 should still be present
+    assert.ok(rows[0].includes("P01_codigo"));
+    assert.ok(rows[0].includes("P22_resposta"));
+    // Q6 answer not in schema → appears as synthetic open column
+    assert.ok(rows[0].includes("P06_codigo"));
+    // P01 answer is still correct
+    assert.equal(getCsvCell(rows, "P01_codigo"), "1.2");
   });
 
   test("rejects invalid official id", () => {
@@ -351,15 +363,16 @@ describe("survey export normalization", () => {
     );
   });
 
-  test("rejects alternative code with wrong prefix in schema", () => {
+  test("tolerates option code with wrong prefix in schema (warns, exports proceed)", () => {
     const questions = makeQuestions();
     const q6 = questions.find((q) => q.id === 6);
     if (!q6 || q6.type !== "multi") throw new Error("invalid fixture");
-    q6.options[0].code = "7.1";
-    assert.throws(
-      () => normalizeSurveyExportData({ responses: [], questions }),
-      /Option code prefix mismatch on question 6/,
-    );
+    // Deliberately corrupt one option code — export must not throw
+    q6.options[0] = { ...q6.options[0], code: "7.1" };
+    const { csv } = buildSurveyCsvExport({ responses: [], questions });
+    const rows = parseCsv(csv);
+    assert.ok(rows[0].includes("P06_codigo"));
+    assert.ok(rows[0].includes("P22_resposta"));
   });
 
   test("sanitizes CSV formula injection while preserving JSON original", () => {
@@ -764,5 +777,95 @@ describe("survey export normalization", () => {
   test("xlsx file prefix matches convention", () => {
     const prefix = buildSurveyExportFilePrefix(new Date("2026-07-24T12:00:00.000Z"));
     assert.equal(prefix, "guivos-VAL-002-respostas-2026-07-24");
+  });
+
+  // --- Tolerant schema tests ---
+
+  test("tolerates schema with extra questions (IDs > 22) — all three formats work", () => {
+    const questions = makeQuestions();
+    const extra: Question = { ...questions[0], id: 23, code: "23" };
+    const response = makeResponse({ answers: { ...makeResponse().answers, 23: "extra answer" } });
+    const { csv } = buildSurveyCsvExport({
+      responses: [response],
+      questions: [...questions, extra],
+    });
+    const jsonDoc = buildSurveyJsonExport({
+      responses: [response],
+      questions: [...questions, extra],
+    }).document;
+    const { bytes } = buildSurveyXlsxExport({
+      responses: [response],
+      questions: [...questions, extra],
+    });
+    const rows = parseCsv(csv);
+    // P23 should appear as a column
+    assert.ok(
+      rows[0].includes("P23_codigo") || rows[0].includes("P23_resposta"),
+      "P23 column expected",
+    );
+    // P01 and P22 still present
+    assert.ok(rows[0].includes("P01_codigo"));
+    assert.ok(rows[0].includes("P22_resposta"));
+    assert.ok(
+      jsonDoc.respostas[0].perguntas["P22" as keyof (typeof jsonDoc.respostas)[0]["perguntas"]],
+    );
+    assert.ok(bytes.byteLength > 0);
+  });
+
+  test("tolerates schema missing some official questions — orphan answers appear as synthetic columns", () => {
+    const questions = makeQuestions().filter((q) => q.id !== 6);
+    const response = makeResponse({ answers: { ...makeResponse().answers, 6: "6.1" } });
+    const { csv } = buildSurveyCsvExport({ responses: [response], questions });
+    const rows = parseCsv(csv);
+    // Orphan Q6 should appear as a synthetic open column
+    assert.ok(rows[0].includes("P06_codigo"), "orphan P06 column expected");
+    // Content: single-string raw answer → treated as open text for synthetic question
+    const resposta = getCsvCell(rows, "P06_resposta");
+    assert.equal(resposta, "6.1");
+  });
+
+  test("no duplicate columns when schema and orphan answers overlap", () => {
+    const questions = makeQuestions();
+    const response = makeResponse();
+    const { csv } = buildSurveyCsvExport({ responses: [response], questions });
+    const rows = parseCsv(csv);
+    const headers = rows[0] as string[];
+    const seen = new Set<string>();
+    for (const h of headers) {
+      assert.ok(!seen.has(h), `Duplicate column header: ${h}`);
+      seen.add(h);
+    }
+  });
+
+  test("historical response with extra question preserved in CSV/JSON/XLSX", () => {
+    const questions = makeQuestions();
+    const historicalResponse = makeResponse({
+      answers: { ...makeResponse().answers, 99: "resposta histórica" },
+    });
+    const { csv } = buildSurveyCsvExport({ responses: [historicalResponse], questions });
+    const jsonDoc = buildSurveyJsonExport({ responses: [historicalResponse], questions }).document;
+    const { bytes } = buildSurveyXlsxExport({ responses: [historicalResponse], questions });
+    const rows = parseCsv(csv);
+    assert.ok(rows[0].includes("P99_codigo"), "P99 synthetic column expected");
+    const csvVal = getCsvCell(rows, "P99_resposta");
+    assert.equal(csvVal, "resposta histórica");
+    const p99 = (jsonDoc.respostas[0].perguntas as Record<string, unknown>)["P99"];
+    assert.ok(p99, "P99 must be in JSON");
+    assert.ok(bytes.byteLength > 0);
+  });
+
+  test("schema-with-no-official-questions still exports structural columns", () => {
+    // Schema has only Q99 (non-official)
+    const minimalQuestion: Question = {
+      ...makeQuestions()[21],
+      id: 99,
+      code: "99",
+      type: "open",
+    };
+    const response = makeResponse({ answers: { 99: "x" } });
+    const { csv } = buildSurveyCsvExport({ responses: [response], questions: [minimalQuestion] });
+    const rows = parseCsv(csv);
+    assert.ok(rows[0].includes("response_id"), "structural column must be present");
+    assert.ok(rows[0].includes("P99_codigo"));
   });
 });

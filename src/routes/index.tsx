@@ -92,6 +92,11 @@ function Survey() {
     const v = answers[q.id];
     if (q.optional) return true;
     if (v === undefined || v === null) return false;
+    if (q.type === "single" && q.id === 2 && q.extra) {
+      if (typeof v !== "string" || v.length === 0) return false;
+      const city = (extras[q.extra.key] || "").trim();
+      return city.length >= 2;
+    }
     if (q.type === "multi") return Array.isArray(v) && (v as string[]).length > 0;
     if (q.type === "open") return typeof v === "string" && (v as string).trim().length >= 3;
     if (q.type === "scale") return typeof v === "number";
@@ -669,6 +674,8 @@ function Dropdown({ q, value, onChange, extras, setExtras }: {
   setExtras: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }) {
   const selected = q.options.find((o) => o.code === value);
+  const cityRequired = q.id === 2 && !!selected && !!q.extra;
+  const cityMissing = cityRequired && (extras[q.extra!.key] || "").trim().length < 2;
   return (
     <div className="space-y-5">
       <div className="relative">
@@ -683,14 +690,23 @@ function Dropdown({ q, value, onChange, extras, setExtras }: {
         <ArrowRight className="pointer-events-none absolute right-5 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-muted-foreground" strokeWidth={2} />
       </div>
       {selected && q.extra && q.id === 2 && (
-        <StateCityPicker
-          stateLabel={selected.label}
-          value={extras[q.extra.key] || ""}
-          onChange={(city) => {
-            const key = q.extra!.key;
-            setExtras((x) => ({ ...x, [key]: city }));
-          }}
-        />
+        <div className="space-y-2">
+          <StateCityPicker
+            stateLabel={selected.label}
+            value={extras[q.extra.key] || ""}
+            required
+            invalid={cityMissing}
+            onChange={(city) => {
+              const key = q.extra!.key;
+              setExtras((x) => ({ ...x, [key]: city }));
+            }}
+          />
+          {cityMissing && (
+            <p className="text-xs font-medium text-red-600">
+              Informe sua cidade para habilitar o botão de continuar.
+            </p>
+          )}
+        </div>
       )}
       {selected && q.extra && q.id !== 2 && (
         <div className="anim-fade-up">

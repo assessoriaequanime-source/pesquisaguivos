@@ -20,6 +20,8 @@ type Props = {
   stateLabel: string | undefined;
   value: string; // city name
   onChange: (city: string) => void;
+  required?: boolean;
+  invalid?: boolean;
 };
 
 // Cache in-memory across renders/questions
@@ -36,7 +38,7 @@ function extractPolygons(geom: any): Poly[] {
   return [];
 }
 
-export function StateCityPicker({ stateLabel, value, onChange }: Props) {
+export function StateCityPicker({ stateLabel, value, onChange, required = false, invalid = false }: Props) {
   const uf = stateLabel ? UF_BY_LABEL[stateLabel] : undefined;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +142,7 @@ export function StateCityPicker({ stateLabel, value, onChange }: Props) {
       <div className="flex items-center justify-between">
         <label className="text-xs font-medium text-muted-foreground">
           Selecione sua cidade — clique no mapa ou busque na lista.
+          {required ? " (obrigatório)" : ""}
         </label>
         {value && (
           <button
@@ -214,7 +217,14 @@ export function StateCityPicker({ stateLabel, value, onChange }: Props) {
             onChange={(e) => { setQuery(e.target.value); setFocused(true); }}
             onFocus={() => setFocused(true)}
             placeholder={data ? "Buscar cidade…" : "Aguarde o carregamento…"}
-            className="w-full rounded-xl border-2 border-border bg-card py-3 pl-11 pr-4 text-sm focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15"
+            required={required}
+            aria-invalid={invalid}
+            className={[
+              "w-full rounded-xl border-2 bg-card py-3 pl-11 pr-4 text-sm focus:outline-none focus:ring-4",
+              invalid
+                ? "border-red-400 focus:border-red-500 focus:ring-red-200/70"
+                : "border-border focus:border-grape focus:ring-grape/15",
+            ].join(" ")}
           />
         </div>
 

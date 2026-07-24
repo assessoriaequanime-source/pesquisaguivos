@@ -39,7 +39,6 @@ import {
   saveContent,
   saveQuestions,
   setAdminPassword,
-  verifyAdminPasswordFn,
   visibleQuestions,
   type Frame,
   type PageContent,
@@ -48,6 +47,7 @@ import {
   type ResponseRecord,
   type TitleStyle,
 } from "@/lib/survey-store";
+import { verifyAdminPasswordFn } from "@/lib/survey-server-fns";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
@@ -59,7 +59,6 @@ export const Route = createFileRoute("/admin")({
   }),
 });
 
-const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "guivos2026";
 const AUTH_KEY = "guivos-admin-auth";
 
 type Tab = "overview" | "responses" | "questions" | "content";
@@ -341,15 +340,76 @@ function ResponsesTab({ responses, questions, onReload }: {
   const [selected, setSelected] = useState<ResponseRecord | null>(null);
 
   const exportCSV = () => {
-    const cols = ["id", "at", "durationSec", ...questions.map((q) => `q${q.id}`), "contato_nome", "contato"];
-    const rows = responses.map((r) => [
-      r.id, r.at, r.durationSec,
-      ...questions.map((q) => {
-        const v = r.answers[q.id];
-        return Array.isArray(v) ? (v as string[]).join("|") : (v ?? "");
+    const exportQuestions = questions.filter((q) => !q.hidden);
+    const extraKeys = Array.from(
+      new Set([
+        ...exportQuestions
+          .filter((q) => q.type === "single" && !!q.extra)
+          .map((q) => q.extra!.key),
+        ...responses.flatMap((r) => Object.keys(r.extras || {})),
+      ]),
+    ).sort();
+
+    const cols = [
+      "response_id",
+      "enviado_em_iso",
+      "enviado_em_ptbr",
+      "duracao_segundos",
+      "duracao_minutos",
+      "total_perguntas",
+      "total_respondidas",
+      "percentual_respondido",
+      "contato_nome",
+      "contato",
+      ...extraKeys.map((k) => `extra_${k}`),
+      ...exportQuestions.flatMap((q) => {
+        const qTag = `q${String(q.id).padStart(2, "0")}`;
+        return [
+          `${qTag}_ordem`,
+          `${qTag}_secao`,
+          `${qTag}_codigo_pergunta`,
+          `${qTag}_pergunta`,
+          `${qTag}_tipo`,
+          `${qTag}_obrigatoriedade`,
+          `${qTag}_resposta_codigo`,
+          `${qTag}_resposta_texto`,
+        ];
       }),
-      r.contact.name, r.contact.contact,
-    ]);
+    ];
+
+    const rows = responses.map((r) => {
+      const answeredCount = exportQuestions.reduce((acc, q) => {
+        return acc + (isAnsweredForExport(q, r.answers[q.id]) ? 1 : 0);
+      }, 0);
+      const totalQuestions = exportQuestions.length;
+      const answeredPct = totalQuestions ? ((answeredCount / totalQuestions) * 100).toFixed(1) : "0.0";
+      return [
+        r.id,
+        r.at,
+        new Date(r.at).toLocaleString("pt-BR"),
+        r.durationSec,
+        (r.durationSec / 60).toFixed(2),
+        totalQuestions,
+        answeredCount,
+        `${answeredPct}%`,
+        r.contact.name,
+        r.contact.contact,
+        ...extraKeys.map((k) => r.extras[k] ?? ""),
+        ...exportQuestions.flatMap((q, idx) => {
+          const answer = r.answers[q.id];
+          return [
+            idx + 1,
+            q.sectionLabel,
+            q.code,
+            q.title,
+            q.type,
+            q.optional ? "opcional" : "obrigatória",
+            csvAnswerCodes(q, answer),
+            csvAnswerText(q, answer),
+          ];
+        }),
+      ];
+    });
     const csv = [cols, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
     downloadFile(csv, `guivos-respostas-${Date.now()}.csv`, "text/csv");
   };
@@ -469,6 +529,36 @@ function labelFor(questions: Question[], id: number, code: unknown) {
   const q = questions.find((x) => x.id === id);
   if (!q || (q.type !== "single" && q.type !== "multi")) return code;
   return q.options.find((o) => o.code === code)?.label ?? code;
+}
+
+function csvAnswerCodes(q: Question, v: unknown): string {
+  if (v === undefined || v === null || v === "") return "";
+  if (q.type === "multi" && Array.isArray(v)) return v.join("|");
+  return String(v);
+}
+
+function csvAnswerText(q: Question, v: unknown): string {
+  if (v === undefined || v === null || v === "") return "";
+  if (q.type === "single") {
+    const code = String(v);
+    return q.options.find((o) => o.code === code)?.label ?? code;
+  }
+  if (q.type === "multi" && Array.isArray(v)) {
+    return v
+      .map((code) => q.options.find((o) => o.code === code)?.label ?? code)
+      .join(" | ");
+  }
+  if (q.type === "scale" && typeof v === "number") return `${v}/10`;
+  return String(v);
+}
+
+function isAnsweredForExport(q: Question, v: unknown): boolean {
+  if (q.optional) return true;
+  if (v === undefined || v === null || v === "") return false;
+  if (q.type === "multi") return Array.isArray(v) && v.length > 0;
+  if (q.type === "open") return typeof v === "string" && v.trim().length >= 3;
+  if (q.type === "scale") return typeof v === "number";
+  return typeof v === "string" && v.length > 0;
 }
 
 function ResponseDetail({ record, questions, onClose }: { record: ResponseRecord; questions: Question[]; onClose: () => void }) {

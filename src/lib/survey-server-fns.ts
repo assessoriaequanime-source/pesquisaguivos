@@ -22,6 +22,18 @@ const responseSchema = z.object({
   answers: z.record(z.string(), z.unknown()),
   extras: z.record(z.string(), z.string()),
   contact: z.object({ name: z.string().max(200), contact: z.string().max(200) }),
+}).superRefine((data, ctx) => {
+  const stateAnswer = data.answers["2"];
+  if (typeof stateAnswer === "string" && stateAnswer.length > 0) {
+    const city = (data.extras.cidade || "").trim();
+    if (city.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["extras", "cidade"],
+        message: "City is required when state is answered",
+      });
+    }
+  }
 });
 
 const passwordSchema = z.object({ password: z.string().min(1).max(256) });

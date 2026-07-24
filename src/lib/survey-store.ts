@@ -118,9 +118,9 @@ export const DEFAULT_QUESTIONS: Question[] = [
     type: "single",
     asDropdown: true,
     title: "Em qual estado você mora?",
-    helper: "Escolha na lista. Você poderá informar sua cidade em seguida.",
+    helper: "Escolha na lista e informe sua cidade para continuar.",
     options: estados.map((l, i) => ({ code: `2.${i + 1}`, label: l })),
-    extra: { key: "cidade", placeholder: "Cidade ou município (opcional)" },
+    extra: { key: "cidade", placeholder: "Cidade ou município (obrigatório)" },
   },
   {
     id: 3,

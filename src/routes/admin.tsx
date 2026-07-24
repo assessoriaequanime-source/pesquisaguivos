@@ -47,15 +47,18 @@ import {
   type ResponseRecord,
   type TitleStyle,
 } from "@/lib/survey-store";
+import {
+  buildSurveyCsvExport,
+  buildSurveyExportFilePrefix,
+  buildSurveyJsonExport,
+  buildSurveyXlsxExport,
+} from "@/lib/survey-csv-export";
 import { verifyAdminPasswordFn } from "@/lib/survey-server-fns";
 
 export const Route = createFileRoute("/admin")({
   component: Admin,
   head: () => ({
-    meta: [
-      { title: "Painel · Guivos" },
-      { name: "robots", content: "noindex,nofollow" },
-    ],
+    meta: [{ title: "Painel · Guivos" }, { name: "robots", content: "noindex,nofollow" }],
   }),
 });
 
@@ -90,9 +93,15 @@ function Admin() {
     setQuestions(getQuestions());
     setContent(getContent());
     setResponses(getResponses());
-    void refreshResponsesFromServer().then((list) => { if (list) setResponses(list); });
-    void refreshQuestionsFromServer().then((qs) => { if (qs) setQuestions(qs); });
-    void refreshContentFromServer().then((c) => { if (c) setContent(c); });
+    void refreshResponsesFromServer().then((list) => {
+      if (list) setResponses(list);
+    });
+    void refreshQuestionsFromServer().then((qs) => {
+      if (qs) setQuestions(qs);
+    });
+    void refreshContentFromServer().then((c) => {
+      if (c) setContent(c);
+    });
   }, [authed]);
 
   const reloadResponses = () => {
@@ -115,13 +124,14 @@ function Admin() {
 
   const visibleCount = visibleQuestions(questions).length;
 
-
   return (
     <div className="min-h-screen bg-secondary/40">
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur-xl">
         <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 sm:flex sm:justify-between sm:px-6 sm:py-4 md:px-8">
           <Link to="/" className="flex min-w-0 items-center gap-2.5">
-            <span className="truncate font-display text-lg font-bold tracking-tight sm:text-xl">Guivos</span>
+            <span className="truncate font-display text-lg font-bold tracking-tight sm:text-xl">
+              Guivos
+            </span>
             <span className="rounded-full bg-secondary px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.18em] text-muted-foreground">
               Painel
             </span>
@@ -139,8 +149,16 @@ function Admin() {
           {(
             [
               { k: "overview", label: "Visão geral", icon: Eye },
-              { k: "responses", label: `Respostas (${responses.length})`, icon: MessageSquareQuote },
-              { k: "questions", label: `Perguntas (${visibleCount}/${questions.length})`, icon: FileText },
+              {
+                k: "responses",
+                label: `Respostas (${responses.length})`,
+                icon: MessageSquareQuote,
+              },
+              {
+                k: "questions",
+                label: `Perguntas (${visibleCount}/${questions.length})`,
+                icon: FileText,
+              },
               { k: "content", label: "Textos das páginas", icon: Type },
             ] as const
           ).map((t) => {
@@ -152,7 +170,9 @@ function Admin() {
                 onClick={() => setTab(t.k)}
                 className={[
                   "-mb-px inline-flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-3 text-xs font-medium transition-colors sm:px-4 sm:text-sm",
-                  active ? "border-grape text-grape" : "border-transparent text-muted-foreground hover:text-foreground",
+                  active
+                    ? "border-grape text-grape"
+                    : "border-transparent text-muted-foreground hover:text-foreground",
                 ].join(" ")}
               >
                 <Icon className="h-4 w-4" strokeWidth={2} />
@@ -175,9 +195,7 @@ function Admin() {
             onReloaded={reloadQuestions}
           />
         )}
-        {tab === "content" && (
-          <ContentTab content={content} setContent={setContent} />
-        )}
+        {tab === "content" && <ContentTab content={content} setContent={setContent} />}
       </main>
     </div>
   );
@@ -220,13 +238,14 @@ function AuthGate({ onSuccess }: { onSuccess: (password: string) => void }) {
           type="password"
           autoFocus
           value={pw}
-          onChange={(e) => { setPw(e.target.value); setErr(false); }}
+          onChange={(e) => {
+            setPw(e.target.value);
+            setErr(false);
+          }}
           placeholder="Senha"
           className="mt-5 w-full rounded-xl border-2 border-border bg-background px-4 py-3 text-sm focus:border-grape focus:outline-none focus:ring-4 focus:ring-grape/15"
         />
-        {err && (
-          <div className="mt-2 text-xs font-medium text-destructive">Senha incorreta.</div>
-        )}
+        {err && <div className="mt-2 text-xs font-medium text-destructive">Senha incorreta.</div>}
         <button
           type="submit"
           disabled={loading}
@@ -234,7 +253,10 @@ function AuthGate({ onSuccess }: { onSuccess: (password: string) => void }) {
         >
           {loading ? "Verificando..." : "Entrar"}
         </button>
-        <Link to="/" className="mt-4 block text-center text-xs text-muted-foreground hover:text-grape">
+        <Link
+          to="/"
+          className="mt-4 block text-center text-xs text-muted-foreground hover:text-grape"
+        >
           Voltar à pesquisa
         </Link>
       </form>
@@ -244,11 +266,21 @@ function AuthGate({ onSuccess }: { onSuccess: (password: string) => void }) {
 
 /* ---------------- OVERVIEW ---------------- */
 
-function Overview({ responses, questions }: { responses: ResponseRecord[]; questions: Question[] }) {
+function Overview({
+  responses,
+  questions,
+}: {
+  responses: ResponseRecord[];
+  questions: Question[];
+}) {
   const totals = useMemo(() => {
     const totalR = responses.length;
-    const avgDuration = totalR ? Math.round(responses.reduce((s, r) => s + r.durationSec, 0) / totalR) : 0;
-    const intent = responses.filter((r) => ["18.4", "18.5"].includes(r.answers[18] as string)).length;
+    const avgDuration = totalR
+      ? Math.round(responses.reduce((s, r) => s + r.durationSec, 0) / totalR)
+      : 0;
+    const intent = responses.filter((r) =>
+      ["18.4", "18.5"].includes(r.answers[18] as string),
+    ).length;
     const wantsExperience = responses.filter((r) => r.answers[19] === "19.1").length;
     return { totalR, avgDuration, intent, wantsExperience };
   }, [responses]);
@@ -257,7 +289,9 @@ function Overview({ responses, questions }: { responses: ResponseRecord[]; quest
     return questions
       .filter((q) => q.type === "scale" && !q.hidden)
       .map((q) => {
-        const values = responses.map((r) => r.answers[q.id]).filter((v) => typeof v === "number") as number[];
+        const values = responses
+          .map((r) => r.answers[q.id])
+          .filter((v) => typeof v === "number") as number[];
         const avg = values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
         return { id: q.id, title: q.title, avg, count: values.length };
       });
@@ -266,7 +300,12 @@ function Overview({ responses, questions }: { responses: ResponseRecord[]; quest
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="grid gap-3 sm:grid-cols-2 sm:gap-4 md:grid-cols-4">
-        <StatCard color="grape" label="Respostas totais" value={totals.totalR} icon={<Users className="h-5 w-5" />} />
+        <StatCard
+          color="grape"
+          label="Respostas totais"
+          value={totals.totalR}
+          icon={<Users className="h-5 w-5" />}
+        />
         <StatCard color="tangerine" label="Duração média" value={`${totals.avgDuration}s`} />
         <StatCard color="mint" label="Intenção alta (18.4/18.5)" value={totals.intent} />
         <StatCard color="bubble" label="Quer participar (19.1)" value={totals.wantsExperience} />
@@ -282,9 +321,12 @@ function Overview({ responses, questions }: { responses: ResponseRecord[]; quest
             {scaleAverages.map((s) => (
               <div key={s.id}>
                 <div className="flex items-baseline justify-between gap-3 text-sm">
-                  <span className="min-w-0 flex-1 truncate font-medium">Q{s.id} · {s.title}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    Q{s.id} · {s.title}
+                  </span>
                   <span className="font-display font-semibold text-grape">
-                    {s.avg.toFixed(1)} <span className="text-xs font-normal text-muted-foreground">({s.count})</span>
+                    {s.avg.toFixed(1)}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">({s.count})</span>
                   </span>
                 </div>
                 <div className="mt-1.5 h-2 rounded-full bg-secondary">
@@ -317,7 +359,17 @@ function Overview({ responses, questions }: { responses: ResponseRecord[]; quest
   );
 }
 
-function StatCard({ color, label, value, icon }: { color: string; label: string; value: React.ReactNode; icon?: React.ReactNode }) {
+function StatCard({
+  color,
+  label,
+  value,
+  icon,
+}: {
+  color: string;
+  label: string;
+  value: React.ReactNode;
+  icon?: React.ReactNode;
+}) {
   return (
     <div className="rounded-3xl border border-border bg-card p-4 sm:p-5">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
@@ -334,88 +386,49 @@ function StatCard({ color, label, value, icon }: { color: string; label: string;
 
 /* ---------------- RESPONSES ---------------- */
 
-function ResponsesTab({ responses, questions, onReload }: {
-  responses: ResponseRecord[]; questions: Question[]; onReload: () => void;
+function ResponsesTab({
+  responses,
+  questions,
+  onReload,
+}: {
+  responses: ResponseRecord[];
+  questions: Question[];
+  onReload: () => void;
 }) {
   const [selected, setSelected] = useState<ResponseRecord | null>(null);
 
   const exportCSV = () => {
-    const exportQuestions = questions.filter((q) => !q.hidden);
-    const extraKeys = Array.from(
-      new Set([
-        ...exportQuestions
-          .filter((q) => q.type === "single" && !!q.extra)
-          .map((q) => q.extra!.key),
-        ...responses.flatMap((r) => Object.keys(r.extras || {})),
-      ]),
-    ).sort();
-
-    const cols = [
-      "response_id",
-      "enviado_em_iso",
-      "enviado_em_ptbr",
-      "duracao_segundos",
-      "duracao_minutos",
-      "total_perguntas",
-      "total_respondidas",
-      "percentual_respondido",
-      "contato_nome",
-      "contato",
-      ...extraKeys.map((k) => `extra_${k}`),
-      ...exportQuestions.flatMap((q) => {
-        const qTag = `q${String(q.id).padStart(2, "0")}`;
-        return [
-          `${qTag}_ordem`,
-          `${qTag}_secao`,
-          `${qTag}_codigo_pergunta`,
-          `${qTag}_pergunta`,
-          `${qTag}_tipo`,
-          `${qTag}_obrigatoriedade`,
-          `${qTag}_resposta_codigo`,
-          `${qTag}_resposta_texto`,
-        ];
-      }),
-    ];
-
-    const rows = responses.map((r) => {
-      const answeredCount = exportQuestions.reduce((acc, q) => {
-        return acc + (isAnsweredForExport(q, r.answers[q.id]) ? 1 : 0);
-      }, 0);
-      const totalQuestions = exportQuestions.length;
-      const answeredPct = totalQuestions ? ((answeredCount / totalQuestions) * 100).toFixed(1) : "0.0";
-      return [
-        r.id,
-        r.at,
-        new Date(r.at).toLocaleString("pt-BR"),
-        r.durationSec,
-        (r.durationSec / 60).toFixed(2),
-        totalQuestions,
-        answeredCount,
-        `${answeredPct}%`,
-        r.contact.name,
-        r.contact.contact,
-        ...extraKeys.map((k) => r.extras[k] ?? ""),
-        ...exportQuestions.flatMap((q, idx) => {
-          const answer = r.answers[q.id];
-          return [
-            idx + 1,
-            q.sectionLabel,
-            q.code,
-            q.title,
-            q.type,
-            q.optional ? "opcional" : "obrigatória",
-            csvAnswerCodes(q, answer),
-            csvAnswerText(q, answer),
-          ];
-        }),
-      ];
+    const filePrefix = buildSurveyExportFilePrefix();
+    const { csv } = buildSurveyCsvExport({
+      responses,
+      questions,
+      fallbackQuestions: getQuestions(),
     });
-    const csv = [cols, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-    downloadFile(csv, `guivos-respostas-${Date.now()}.csv`, "text/csv");
+    downloadFile(csv, `${filePrefix}.csv`, "text/csv;charset=utf-8");
   };
 
   const exportJSON = () => {
-    downloadFile(JSON.stringify(responses, null, 2), `guivos-respostas-${Date.now()}.json`, "application/json");
+    const filePrefix = buildSurveyExportFilePrefix();
+    const { json } = buildSurveyJsonExport({
+      responses,
+      questions,
+      fallbackQuestions: getQuestions(),
+    });
+    downloadFile(json, `${filePrefix}.json`, "application/json;charset=utf-8");
+  };
+
+  const exportXLSX = () => {
+    const filePrefix = buildSurveyExportFilePrefix();
+    const { bytes } = buildSurveyXlsxExport({
+      responses,
+      questions,
+      fallbackQuestions: getQuestions(),
+    });
+    downloadFile(
+      bytes,
+      `${filePrefix}.xlsx`,
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
   };
 
   return (
@@ -423,16 +436,29 @@ function ResponsesTab({ responses, questions, onReload }: {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-semibold sm:text-2xl">Respostas coletadas</h2>
         <div className="flex flex-wrap gap-2">
-          <button onClick={exportCSV} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm">
+          <button
+            onClick={exportCSV}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm"
+          >
             <Download className="h-4 w-4" strokeWidth={2} /> CSV
           </button>
-          <button onClick={exportJSON} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm">
+          <button
+            onClick={exportJSON}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm"
+          >
             <Download className="h-4 w-4" strokeWidth={2} /> JSON
+          </button>
+          <button
+            onClick={exportXLSX}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm"
+          >
+            <Download className="h-4 w-4" strokeWidth={2} /> XLSX
           </button>
           <button
             onClick={() => {
               if (confirm("Apagar todas as respostas? Esta ação não pode ser desfeita.")) {
-                clearResponses(); onReload();
+                clearResponses();
+                onReload();
               }
             }}
             className="inline-flex items-center gap-2 rounded-full border border-destructive/30 bg-card px-3 py-2 text-xs text-destructive hover:bg-destructive hover:text-white sm:px-4 sm:text-sm"
@@ -464,7 +490,9 @@ function ResponsesTab({ responses, questions, onReload }: {
               <tbody>
                 {responses.map((r) => (
                   <tr key={r.id} className="border-t border-border hover:bg-secondary/30">
-                    <td className="px-5 py-3 whitespace-nowrap">{new Date(r.at).toLocaleString("pt-BR")}</td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      {new Date(r.at).toLocaleString("pt-BR")}
+                    </td>
                     <td className="px-5 py-3">{labelFor(questions, 2, r.answers[2]) ?? "—"}</td>
                     <td className="px-5 py-3">{labelFor(questions, 4, r.answers[4]) ?? "—"}</td>
                     <td className="px-5 py-3">{labelFor(questions, 18, r.answers[18]) ?? "—"}</td>
@@ -478,7 +506,10 @@ function ResponsesTab({ responses, questions, onReload }: {
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm("Remover esta resposta?")) { deleteResponse(r.id); onReload(); }
+                          if (confirm("Remover esta resposta?")) {
+                            deleteResponse(r.id);
+                            onReload();
+                          }
                         }}
                         className="inline-flex items-center gap-1 rounded-full border border-destructive/30 px-3 py-1.5 text-xs text-destructive hover:bg-destructive hover:text-white"
                       >
@@ -494,18 +525,37 @@ function ResponsesTab({ responses, questions, onReload }: {
           <div className="space-y-3 md:hidden">
             {responses.map((r) => (
               <div key={r.id} className="rounded-2xl border border-border bg-card p-4">
-                <div className="text-xs text-muted-foreground">{new Date(r.at).toLocaleString("pt-BR")} · {r.durationSec}s</div>
+                <div className="text-xs text-muted-foreground">
+                  {new Date(r.at).toLocaleString("pt-BR")} · {r.durationSec}s
+                </div>
                 <div className="mt-2 space-y-1 text-sm">
-                  <div><span className="text-muted-foreground">Estado:</span> {labelFor(questions, 2, r.answers[2]) ?? "—"}</div>
-                  <div><span className="text-muted-foreground">Área:</span> {labelFor(questions, 4, r.answers[4]) ?? "—"}</div>
-                  <div><span className="text-muted-foreground">Intenção:</span> {labelFor(questions, 18, r.answers[18]) ?? "—"}</div>
+                  <div>
+                    <span className="text-muted-foreground">Estado:</span>{" "}
+                    {labelFor(questions, 2, r.answers[2]) ?? "—"}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Área:</span>{" "}
+                    {labelFor(questions, 4, r.answers[4]) ?? "—"}
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Intenção:</span>{" "}
+                    {labelFor(questions, 18, r.answers[18]) ?? "—"}
+                  </div>
                 </div>
                 <div className="mt-3 flex gap-2">
-                  <button onClick={() => setSelected(r)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-full border border-border px-3 py-2 text-xs hover:border-grape hover:text-grape">
+                  <button
+                    onClick={() => setSelected(r)}
+                    className="flex-1 inline-flex items-center justify-center gap-1 rounded-full border border-border px-3 py-2 text-xs hover:border-grape hover:text-grape"
+                  >
                     <Eye className="h-3.5 w-3.5" strokeWidth={2} /> Ver
                   </button>
                   <button
-                    onClick={() => { if (confirm("Remover esta resposta?")) { deleteResponse(r.id); onReload(); } }}
+                    onClick={() => {
+                      if (confirm("Remover esta resposta?")) {
+                        deleteResponse(r.id);
+                        onReload();
+                      }
+                    }}
                     className="inline-flex items-center gap-1 rounded-full border border-destructive/30 px-3 py-2 text-xs text-destructive hover:bg-destructive hover:text-white"
                   >
                     <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
@@ -531,37 +581,15 @@ function labelFor(questions: Question[], id: number, code: unknown) {
   return q.options.find((o) => o.code === code)?.label ?? code;
 }
 
-function csvAnswerCodes(q: Question, v: unknown): string {
-  if (v === undefined || v === null || v === "") return "";
-  if (q.type === "multi" && Array.isArray(v)) return v.join("|");
-  return String(v);
-}
-
-function csvAnswerText(q: Question, v: unknown): string {
-  if (v === undefined || v === null || v === "") return "";
-  if (q.type === "single") {
-    const code = String(v);
-    return q.options.find((o) => o.code === code)?.label ?? code;
-  }
-  if (q.type === "multi" && Array.isArray(v)) {
-    return v
-      .map((code) => q.options.find((o) => o.code === code)?.label ?? code)
-      .join(" | ");
-  }
-  if (q.type === "scale" && typeof v === "number") return `${v}/10`;
-  return String(v);
-}
-
-function isAnsweredForExport(q: Question, v: unknown): boolean {
-  if (q.optional) return true;
-  if (v === undefined || v === null || v === "") return false;
-  if (q.type === "multi") return Array.isArray(v) && v.length > 0;
-  if (q.type === "open") return typeof v === "string" && v.trim().length >= 3;
-  if (q.type === "scale") return typeof v === "number";
-  return typeof v === "string" && v.length > 0;
-}
-
-function ResponseDetail({ record, questions, onClose }: { record: ResponseRecord; questions: Question[]; onClose: () => void }) {
+function ResponseDetail({
+  record,
+  questions,
+  onClose,
+}: {
+  record: ResponseRecord;
+  questions: Question[];
+  onClose: () => void;
+}) {
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 backdrop-blur-sm md:items-center">
       <div className="anim-fade-up relative max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-t-3xl bg-background md:rounded-3xl">
@@ -579,28 +607,34 @@ function ResponseDetail({ record, questions, onClose }: { record: ResponseRecord
         <div className="max-h-[calc(92vh-72px)] overflow-y-auto px-5 py-5 sm:px-6">
           {(record.contact.name || record.contact.contact) && (
             <div className="mb-5 rounded-2xl bg-grape/10 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-grape">Contato</div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-grape">
+                Contato
+              </div>
               <div className="mt-1 text-sm">
-                <div><b>Nome:</b> {record.contact.name || "—"}</div>
-                <div><b>Contato:</b> {record.contact.contact || "—"}</div>
+                <div>
+                  <b>Nome:</b> {record.contact.name || "—"}
+                </div>
+                <div>
+                  <b>Contato:</b> {record.contact.contact || "—"}
+                </div>
               </div>
             </div>
           )}
           <div className="space-y-4">
-            {questions.filter((q) => !q.hidden).map((q, idx) => {
-              const v = record.answers[q.id];
-              return (
-                <div key={q.id} className="rounded-2xl border border-border bg-card p-4">
-                  <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                    {displayCode(idx)} · Seção {q.section}
+            {questions
+              .filter((q) => !q.hidden)
+              .map((q, idx) => {
+                const v = record.answers[q.id];
+                return (
+                  <div key={q.id} className="rounded-2xl border border-border bg-card p-4">
+                    <div className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                      {displayCode(idx)} · Seção {q.section}
+                    </div>
+                    <div className="mt-1 text-sm font-medium">{q.title}</div>
+                    <div className="mt-2 text-sm text-foreground/90">{renderAnswer(q, v)}</div>
                   </div>
-                  <div className="mt-1 text-sm font-medium">{q.title}</div>
-                  <div className="mt-2 text-sm text-foreground/90">
-                    {renderAnswer(q, v)}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </div>
       </div>
@@ -609,15 +643,25 @@ function ResponseDetail({ record, questions, onClose }: { record: ResponseRecord
 }
 
 function renderAnswer(q: Question, v: unknown) {
-  if (v === undefined || v === null || v === "") return <span className="text-muted-foreground">— sem resposta</span>;
-  if (q.type === "scale") return <span className="font-display text-2xl font-bold text-grape">{v as number}<span className="text-sm text-muted-foreground">/10</span></span>;
+  if (v === undefined || v === null || v === "")
+    return <span className="text-muted-foreground">— sem resposta</span>;
+  if (q.type === "scale")
+    return (
+      <span className="font-display text-2xl font-bold text-grape">
+        {v as number}
+        <span className="text-sm text-muted-foreground">/10</span>
+      </span>
+    );
   if (q.type === "open") return <span className="italic">"{v as string}"</span>;
   if (q.type === "multi") {
     const arr = v as string[];
     return (
       <div className="flex flex-wrap gap-1.5">
         {arr.map((code) => (
-          <span key={code} className="inline-flex rounded-full bg-tangerine/15 px-2.5 py-1 text-xs text-tangerine">
+          <span
+            key={code}
+            className="inline-flex rounded-full bg-tangerine/15 px-2.5 py-1 text-xs text-tangerine"
+          >
             {q.options.find((o) => o.code === code)?.label ?? code}
           </span>
         ))}
@@ -625,12 +669,20 @@ function renderAnswer(q: Question, v: unknown) {
     );
   }
   const label = q.type === "single" ? q.options.find((o) => o.code === v)?.label : String(v);
-  return <span className="inline-flex rounded-full bg-grape/10 px-3 py-1 text-xs font-medium text-grape">{label}</span>;
+  return (
+    <span className="inline-flex rounded-full bg-grape/10 px-3 py-1 text-xs font-medium text-grape">
+      {label}
+    </span>
+  );
 }
 
 /* ---------------- QUESTIONS EDITOR ---------------- */
 
-function QuestionsTab({ questions, setQuestions, onReloaded }: {
+function QuestionsTab({
+  questions,
+  setQuestions,
+  onReloaded,
+}: {
   questions: Question[];
   setQuestions: (q: Question[]) => void;
   onReloaded: () => void;
@@ -682,7 +734,10 @@ function QuestionsTab({ questions, setQuestions, onReloaded }: {
     clone.id = nq.id;
     clone.code = String(nq.id);
     if ("options" in clone) {
-      clone.options = clone.options.map((o, i) => ({ code: `${clone.id}.${i + 1}`, label: o.label }));
+      clone.options = clone.options.map((o, i) => ({
+        code: `${clone.id}.${i + 1}`,
+        label: o.label,
+      }));
     }
     clone.title = `${q.title} (cópia)`;
     const idx = questions.findIndex((x) => x.id === id);
@@ -707,10 +762,16 @@ function QuestionsTab({ questions, setQuestions, onReloaded }: {
     setDirty(true);
   };
 
-  const save = () => { saveQuestions(questions); setDirty(false); };
+  const save = () => {
+    saveQuestions(questions);
+    setDirty(false);
+  };
   const reset = () => {
     if (!confirm("Restaurar todas as perguntas ao padrão original?")) return;
-    resetQuestions(); setQuestions(DEFAULT_QUESTIONS); onReloaded(); setDirty(false);
+    resetQuestions();
+    setQuestions(DEFAULT_QUESTIONS);
+    onReloaded();
+    setDirty(false);
   };
 
   return (
@@ -723,7 +784,10 @@ function QuestionsTab({ questions, setQuestions, onReloaded }: {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={reset} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm">
+          <button
+            onClick={reset}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm"
+          >
             <RotateCcw className="h-4 w-4" strokeWidth={2} /> Restaurar padrão
           </button>
           <button
@@ -731,7 +795,9 @@ function QuestionsTab({ questions, setQuestions, onReloaded }: {
             disabled={!dirty}
             className={[
               "inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-white transition-all sm:px-5 sm:text-sm",
-              dirty ? "bg-grape shadow-[0_8px_20px_-10px_var(--grape)] hover:bg-ink" : "cursor-not-allowed bg-secondary text-muted-foreground",
+              dirty
+                ? "bg-grape shadow-[0_8px_20px_-10px_var(--grape)] hover:bg-ink"
+                : "cursor-not-allowed bg-secondary text-muted-foreground",
             ].join(" ")}
           >
             <Save className="h-4 w-4" strokeWidth={2} />
@@ -749,12 +815,17 @@ function QuestionsTab({ questions, setQuestions, onReloaded }: {
           const dcode = displayIndexById.has(q.id) ? displayCode(displayIndexById.get(q.id)!) : "—";
           const open = openId === q.id;
           return (
-            <div className={[
-              "rounded-2xl border bg-card transition-all",
-              q.hidden ? "border-dashed border-border/70 opacity-70" : "border-border",
-            ].join(" ")}>
+            <div
+              className={[
+                "rounded-2xl border bg-card transition-all",
+                q.hidden ? "border-dashed border-border/70 opacity-70" : "border-border",
+              ].join(" ")}
+            >
               <div className="flex items-center gap-2 px-3 py-3 sm:gap-3 sm:px-4">
-                <span className="drag-handle cursor-grab touch-none text-muted-foreground hover:text-foreground" title="Arrastar">
+                <span
+                  className="drag-handle cursor-grab touch-none text-muted-foreground hover:text-foreground"
+                  title="Arrastar"
+                >
                   <GripVertical className="h-5 w-5" strokeWidth={2} />
                 </span>
                 <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-grape/10 font-mono text-xs font-bold text-grape sm:w-11 sm:text-sm">
@@ -773,8 +844,15 @@ function QuestionsTab({ questions, setQuestions, onReloaded }: {
                   </div>
                 </button>
                 <div className="flex shrink-0 items-center gap-1">
-                  <IconBtn title={q.hidden ? "Exibir" : "Ocultar"} onClick={() => toggleHidden(q.id)}>
-                    {q.hidden ? <EyeOff className="h-4 w-4" strokeWidth={2} /> : <Eye className="h-4 w-4" strokeWidth={2} />}
+                  <IconBtn
+                    title={q.hidden ? "Exibir" : "Ocultar"}
+                    onClick={() => toggleHidden(q.id)}
+                  >
+                    {q.hidden ? (
+                      <EyeOff className="h-4 w-4" strokeWidth={2} />
+                    ) : (
+                      <Eye className="h-4 w-4" strokeWidth={2} />
+                    )}
                   </IconBtn>
                   <IconBtn title="Duplicar" onClick={() => duplicate(q.id)}>
                     <Copy className="h-4 w-4" strokeWidth={2} />
@@ -806,13 +884,21 @@ function QuestionsTab({ questions, setQuestions, onReloaded }: {
 }
 
 function typeLabel(t: QType) {
-  return t === "single" ? "Escolha única" : t === "multi" ? "Múltipla escolha" : t === "scale" ? "Escala 0–10" : "Texto aberto";
+  return t === "single"
+    ? "Escolha única"
+    : t === "multi"
+      ? "Múltipla escolha"
+      : t === "scale"
+        ? "Escala 0–10"
+        : "Texto aberto";
 }
 
 function AddQuestionBar({ onAdd }: { onAdd: (t: QType) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-border bg-card p-3 sm:p-4">
-      <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Adicionar</span>
+      <span className="mr-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Adicionar
+      </span>
       {(["single", "multi", "scale", "open"] as QType[]).map((t) => (
         <button
           key={t}
@@ -827,14 +913,26 @@ function AddQuestionBar({ onAdd }: { onAdd: (t: QType) => void }) {
   );
 }
 
-function IconBtn({ children, onClick, title, destructive }: { children: React.ReactNode; onClick: () => void; title: string; destructive?: boolean }) {
+function IconBtn({
+  children,
+  onClick,
+  title,
+  destructive,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  title: string;
+  destructive?: boolean;
+}) {
   return (
     <button
       title={title}
       onClick={onClick}
       className={[
         "inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background transition-colors",
-        destructive ? "text-muted-foreground hover:border-destructive hover:text-destructive" : "text-muted-foreground hover:border-grape hover:text-grape",
+        destructive
+          ? "text-muted-foreground hover:border-destructive hover:text-destructive"
+          : "text-muted-foreground hover:border-grape hover:text-grape",
       ].join(" ")}
     >
       {children}
@@ -845,9 +943,12 @@ function IconBtn({ children, onClick, title, destructive }: { children: React.Re
 /* ---- Drag list (HTML5 native) ---- */
 
 function DragList<T extends { id: number }>({
-  items, onMove, render,
+  items,
+  onMove,
+  render,
 }: {
-  items: T[]; onMove: (from: number, to: number) => void;
+  items: T[];
+  onMove: (from: number, to: number) => void;
   render: (item: T, idx: number) => React.ReactNode;
 }) {
   const dragIdx = useRef<number | null>(null);
@@ -862,15 +963,22 @@ function DragList<T extends { id: number }>({
             dragIdx.current = idx;
             e.dataTransfer.effectAllowed = "move";
           }}
-          onDragOver={(e) => { e.preventDefault(); if (over !== idx) setOver(idx); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (over !== idx) setOver(idx);
+          }}
           onDragLeave={() => setOver((o) => (o === idx ? null : o))}
           onDrop={(e) => {
             e.preventDefault();
             const from = dragIdx.current;
             if (from !== null) onMove(from, idx);
-            dragIdx.current = null; setOver(null);
+            dragIdx.current = null;
+            setOver(null);
           }}
-          onDragEnd={() => { dragIdx.current = null; setOver(null); }}
+          onDragEnd={() => {
+            dragIdx.current = null;
+            setOver(null);
+          }}
           className={over === idx ? "ring-2 ring-grape/50 rounded-2xl" : ""}
         >
           {render(it, idx)}
@@ -883,7 +991,9 @@ function DragList<T extends { id: number }>({
 /* ---- Per-question editor ---- */
 
 function QuestionEditor({
-  q, onPatch, onChangeType,
+  q,
+  onPatch,
+  onChangeType,
 }: {
   q: Question;
   onPatch: (p: Partial<Question>) => void;
@@ -897,7 +1007,9 @@ function QuestionEditor({
   const addOption = () => {
     if (q.type !== "single" && q.type !== "multi") return;
     const code = nextOptionCode(q);
-    onPatch({ options: [...q.options, { code, label: `Opção ${q.options.length + 1}` }] } as Partial<Question>);
+    onPatch({
+      options: [...q.options, { code, label: `Opção ${q.options.length + 1}` }],
+    } as Partial<Question>);
   };
   const removeOption = (i: number) => {
     if (q.type !== "single" && q.type !== "multi") return;
@@ -1004,7 +1116,6 @@ function QuestionEditor({
         />
       </div>
 
-
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -1042,7 +1153,11 @@ function QuestionEditor({
               type="number"
               min={0}
               value={(q as Extract<Question, { type: "multi" }>).max ?? ""}
-              onChange={(e) => onPatch({ max: e.target.value ? Number(e.target.value) : undefined } as Partial<Question>)}
+              onChange={(e) =>
+                onPatch({
+                  max: e.target.value ? Number(e.target.value) : undefined,
+                } as Partial<Question>)
+              }
               className="w-20 rounded-lg border border-border bg-background px-2 py-1 text-sm"
             />
           </label>
@@ -1052,7 +1167,9 @@ function QuestionEditor({
       {(q.type === "single" || q.type === "multi") && (
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Opções</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Opções
+            </div>
             <button
               onClick={addOption}
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs hover:border-grape hover:text-grape"
@@ -1102,7 +1219,10 @@ function QuestionEditor({
 }
 
 function OptionsDragList({
-  options, onMove, onLabel, onRemove,
+  options,
+  onMove,
+  onLabel,
+  onRemove,
 }: {
   options: { code: string; label: string }[];
   onMove: (from: number, to: number) => void;
@@ -1117,11 +1237,26 @@ function OptionsDragList({
         <div
           key={o.code}
           draggable
-          onDragStart={(e) => { dragIdx.current = i; e.dataTransfer.effectAllowed = "move"; }}
-          onDragOver={(e) => { e.preventDefault(); if (over !== i) setOver(i); }}
+          onDragStart={(e) => {
+            dragIdx.current = i;
+            e.dataTransfer.effectAllowed = "move";
+          }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            if (over !== i) setOver(i);
+          }}
           onDragLeave={() => setOver((v) => (v === i ? null : v))}
-          onDrop={(e) => { e.preventDefault(); const from = dragIdx.current; if (from !== null) onMove(from, i); dragIdx.current = null; setOver(null); }}
-          onDragEnd={() => { dragIdx.current = null; setOver(null); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            const from = dragIdx.current;
+            if (from !== null) onMove(from, i);
+            dragIdx.current = null;
+            setOver(null);
+          }}
+          onDragEnd={() => {
+            dragIdx.current = null;
+            setOver(null);
+          }}
           className={[
             "flex items-center gap-2 rounded-xl border bg-background p-2",
             over === i ? "border-grape" : "border-border",
@@ -1154,7 +1289,9 @@ function OptionsDragList({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
       {children}
     </div>
   );
@@ -1162,17 +1299,33 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 /* ---------------- CONTENT (PAGES) EDITOR ---------------- */
 
-function ContentTab({ content, setContent }: { content: PageContent; setContent: (c: PageContent) => void }) {
+function ContentTab({
+  content,
+  setContent,
+}: {
+  content: PageContent;
+  setContent: (c: PageContent) => void;
+}) {
   const [dirty, setDirty] = useState(false);
-  const patch = (p: Partial<PageContent>) => { setContent({ ...content, ...p }); setDirty(true); };
-  const save = () => { saveContent(content); setDirty(false); };
+  const patch = (p: Partial<PageContent>) => {
+    setContent({ ...content, ...p });
+    setDirty(true);
+  };
+  const save = () => {
+    saveContent(content);
+    setDirty(false);
+  };
   const reset = () => {
     if (!confirm("Restaurar todos os textos ao padrão?")) return;
-    resetContent(); setContent(DEFAULT_CONTENT); setDirty(false);
+    resetContent();
+    setContent(DEFAULT_CONTENT);
+    setDirty(false);
   };
 
-  const updIntro = (p: Partial<PageContent["intro"]>) => patch({ intro: { ...content.intro, ...p } });
-  const updProp = (p: Partial<PageContent["proposal"]>) => patch({ proposal: { ...content.proposal, ...p } });
+  const updIntro = (p: Partial<PageContent["intro"]>) =>
+    patch({ intro: { ...content.intro, ...p } });
+  const updProp = (p: Partial<PageContent["proposal"]>) =>
+    patch({ proposal: { ...content.proposal, ...p } });
   const updDone = (p: Partial<PageContent["done"]>) => patch({ done: { ...content.done, ...p } });
 
   return (
@@ -1183,14 +1336,20 @@ function ContentTab({ content, setContent }: { content: PageContent; setContent:
           <p className="text-sm text-muted-foreground">Edite intro, proposta e finalização.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={reset} className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm">
+          <button
+            onClick={reset}
+            className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-2 text-xs hover:border-grape sm:px-4 sm:text-sm"
+          >
             <RotateCcw className="h-4 w-4" strokeWidth={2} /> Restaurar
           </button>
           <button
-            onClick={save} disabled={!dirty}
+            onClick={save}
+            disabled={!dirty}
             className={[
               "inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold text-white sm:px-5 sm:text-sm",
-              dirty ? "bg-grape hover:bg-ink" : "cursor-not-allowed bg-secondary text-muted-foreground",
+              dirty
+                ? "bg-grape hover:bg-ink"
+                : "cursor-not-allowed bg-secondary text-muted-foreground",
             ].join(" ")}
           >
             <Save className="h-4 w-4" strokeWidth={2} /> {dirty ? "Salvar" : "Sem alterações"}
@@ -1201,37 +1360,80 @@ function ContentTab({ content, setContent }: { content: PageContent; setContent:
       {/* Intro */}
       <Section title="Intro">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Título — linha 1"><TxtIn value={content.intro.titleTop} onChange={(v) => updIntro({ titleTop: v })} /></Field>
-          <Field label="Título — destaque"><TxtIn value={content.intro.titleAccent} onChange={(v) => updIntro({ titleAccent: v })} /></Field>
+          <Field label="Título — linha 1">
+            <TxtIn value={content.intro.titleTop} onChange={(v) => updIntro({ titleTop: v })} />
+          </Field>
+          <Field label="Título — destaque">
+            <TxtIn
+              value={content.intro.titleAccent}
+              onChange={(v) => updIntro({ titleAccent: v })}
+            />
+          </Field>
         </div>
         <Field label="Parágrafos (um por linha)">
-          <TxtArea rows={5} value={content.intro.paragraphs.join("\n\n")} onChange={(v) => updIntro({ paragraphs: v.split(/\n\s*\n/).filter(Boolean) })} />
+          <TxtArea
+            rows={5}
+            value={content.intro.paragraphs.join("\n\n")}
+            onChange={(v) => updIntro({ paragraphs: v.split(/\n\s*\n/).filter(Boolean) })}
+          />
         </Field>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Rótulo do botão"><TxtIn value={content.intro.ctaLabel} onChange={(v) => updIntro({ ctaLabel: v })} /></Field>
-          <Field label="Tempo estimado"><TxtIn value={content.intro.timeHint} onChange={(v) => updIntro({ timeHint: v })} /></Field>
+          <Field label="Rótulo do botão">
+            <TxtIn value={content.intro.ctaLabel} onChange={(v) => updIntro({ ctaLabel: v })} />
+          </Field>
+          <Field label="Tempo estimado">
+            <TxtIn value={content.intro.timeHint} onChange={(v) => updIntro({ timeHint: v })} />
+          </Field>
         </div>
       </Section>
 
       {/* Proposal */}
       <Section title="Proposta (interlúdio)">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Eyebrow"><TxtIn value={content.proposal.eyebrow} onChange={(v) => updProp({ eyebrow: v })} /></Field>
-          <Field label="Aparecer antes da pergunta ID">
-            <input type="number" value={content.proposal.triggerBeforeId ?? ""} onChange={(e) => updProp({ triggerBeforeId: e.target.value ? Number(e.target.value) : undefined })}
-              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm" />
+          <Field label="Eyebrow">
+            <TxtIn value={content.proposal.eyebrow} onChange={(v) => updProp({ eyebrow: v })} />
           </Field>
-          <Field label="Título — linha 1"><TxtIn value={content.proposal.titleTop} onChange={(v) => updProp({ titleTop: v })} /></Field>
-          <Field label="Título — destaque"><TxtIn value={content.proposal.titleAccent} onChange={(v) => updProp({ titleAccent: v })} /></Field>
+          <Field label="Aparecer antes da pergunta ID">
+            <input
+              type="number"
+              value={content.proposal.triggerBeforeId ?? ""}
+              onChange={(e) =>
+                updProp({ triggerBeforeId: e.target.value ? Number(e.target.value) : undefined })
+              }
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="Título — linha 1">
+            <TxtIn value={content.proposal.titleTop} onChange={(v) => updProp({ titleTop: v })} />
+          </Field>
+          <Field label="Título — destaque">
+            <TxtIn
+              value={content.proposal.titleAccent}
+              onChange={(v) => updProp({ titleAccent: v })}
+            />
+          </Field>
         </div>
         <Field label="Parágrafos de abertura (separe por linha em branco)">
-          <TxtArea rows={4} value={content.proposal.paragraphs.join("\n\n")} onChange={(v) => updProp({ paragraphs: v.split(/\n\s*\n/).filter(Boolean) })} />
+          <TxtArea
+            rows={4}
+            value={content.proposal.paragraphs.join("\n\n")}
+            onChange={(v) => updProp({ paragraphs: v.split(/\n\s*\n/).filter(Boolean) })}
+          />
         </Field>
         <div>
           <div className="mb-2 flex items-center justify-between">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Exemplos (cards)</div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Exemplos (cards)
+            </div>
             <button
-              onClick={() => updProp({ examples: [...content.proposal.examples, { color: "sky", label: "Novo exemplo", text: "" }] })}
+              onClick={() =>
+                updProp({
+                  examples: [
+                    ...content.proposal.examples,
+                    { color: "sky", label: "Novo exemplo", text: "" },
+                  ],
+                })
+              }
               className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs hover:border-grape hover:text-grape"
             >
               <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Adicionar
@@ -1245,7 +1447,11 @@ function ContentTab({ content, setContent }: { content: PageContent; setContent:
                     value={ex.color}
                     onChange={(e) => {
                       const arr = [...content.proposal.examples];
-                      arr[i] = { ...ex, color: e.target.value as PageContent["proposal"]["examples"][number]["color"] };
+                      arr[i] = {
+                        ...ex,
+                        color: e.target
+                          .value as PageContent["proposal"]["examples"][number]["color"],
+                      };
                       updProp({ examples: arr });
                     }}
                     className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
@@ -1255,35 +1461,77 @@ function ContentTab({ content, setContent }: { content: PageContent; setContent:
                     <option value="sky">Azul (sky)</option>
                     <option value="lemon">Amarelo (lemon)</option>
                   </select>
-                  <TxtIn value={ex.label} onChange={(v) => { const arr = [...content.proposal.examples]; arr[i] = { ...ex, label: v }; updProp({ examples: arr }); }} />
+                  <TxtIn
+                    value={ex.label}
+                    onChange={(v) => {
+                      const arr = [...content.proposal.examples];
+                      arr[i] = { ...ex, label: v };
+                      updProp({ examples: arr });
+                    }}
+                  />
                   <button
-                    onClick={() => { const arr = content.proposal.examples.filter((_, k) => k !== i); updProp({ examples: arr }); }}
+                    onClick={() => {
+                      const arr = content.proposal.examples.filter((_, k) => k !== i);
+                      updProp({ examples: arr });
+                    }}
                     className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     title="Remover"
                   >
                     <Trash2 className="h-4 w-4" strokeWidth={2} />
                   </button>
                 </div>
-                <TxtArea rows={3} value={ex.text} onChange={(v) => { const arr = [...content.proposal.examples]; arr[i] = { ...ex, text: v }; updProp({ examples: arr }); }} />
+                <TxtArea
+                  rows={3}
+                  value={ex.text}
+                  onChange={(v) => {
+                    const arr = [...content.proposal.examples];
+                    arr[i] = { ...ex, text: v };
+                    updProp({ examples: arr });
+                  }}
+                />
               </div>
             ))}
           </div>
         </div>
         <Field label="Parágrafos de fechamento">
-          <TxtArea rows={4} value={content.proposal.closing.join("\n\n")} onChange={(v) => updProp({ closing: v.split(/\n\s*\n/).filter(Boolean) })} />
+          <TxtArea
+            rows={4}
+            value={content.proposal.closing.join("\n\n")}
+            onChange={(v) => updProp({ closing: v.split(/\n\s*\n/).filter(Boolean) })}
+          />
         </Field>
-        <Field label="Rótulo do botão"><TxtIn value={content.proposal.ctaLabel} onChange={(v) => updProp({ ctaLabel: v })} /></Field>
+        <Field label="Rótulo do botão">
+          <TxtIn value={content.proposal.ctaLabel} onChange={(v) => updProp({ ctaLabel: v })} />
+        </Field>
       </Section>
 
       {/* Done */}
       <Section title="Página final">
         <div className="grid gap-3 sm:grid-cols-3">
-          <Field label="Título — linha 1"><TxtIn value={content.done.titleTop} onChange={(v) => updDone({ titleTop: v })} /></Field>
-          <Field label="Título — destaque"><TxtIn value={content.done.titleAccent} onChange={(v) => updDone({ titleAccent: v })} /></Field>
-          <Field label="Título — final"><TxtIn value={content.done.tail} onChange={(v) => updDone({ tail: v })} /></Field>
+          <Field label="Título — linha 1">
+            <TxtIn value={content.done.titleTop} onChange={(v) => updDone({ titleTop: v })} />
+          </Field>
+          <Field label="Título — destaque">
+            <TxtIn value={content.done.titleAccent} onChange={(v) => updDone({ titleAccent: v })} />
+          </Field>
+          <Field label="Título — final">
+            <TxtIn value={content.done.tail} onChange={(v) => updDone({ tail: v })} />
+          </Field>
         </div>
-        <Field label="Parágrafos"><TxtArea rows={4} value={content.done.paragraphs.join("\n\n")} onChange={(v) => updDone({ paragraphs: v.split(/\n\s*\n/).filter(Boolean) })} /></Field>
-        <Field label="Assinatura"><TxtArea rows={3} value={content.done.signature} onChange={(v) => updDone({ signature: v })} /></Field>
+        <Field label="Parágrafos">
+          <TxtArea
+            rows={4}
+            value={content.done.paragraphs.join("\n\n")}
+            onChange={(v) => updDone({ paragraphs: v.split(/\n\s*\n/).filter(Boolean) })}
+          />
+        </Field>
+        <Field label="Assinatura">
+          <TxtArea
+            rows={3}
+            value={content.done.signature}
+            onChange={(v) => updDone({ signature: v })}
+          />
+        </Field>
       </Section>
     </div>
   );
@@ -1303,23 +1551,40 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function TxtIn({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <input value={value} onChange={(e) => onChange(e.target.value)}
-      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-grape focus:outline-none focus:ring-2 focus:ring-grape/20" />
+    <input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus:border-grape focus:outline-none focus:ring-2 focus:ring-grape/20"
+    />
   );
 }
-function TxtArea({ value, onChange, rows = 3 }: { value: string; onChange: (v: string) => void; rows?: number }) {
+function TxtArea({
+  value,
+  onChange,
+  rows = 3,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  rows?: number;
+}) {
   return (
-    <textarea value={value} rows={rows} onChange={(e) => onChange(e.target.value)}
-      className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:border-grape focus:outline-none focus:ring-2 focus:ring-grape/20" />
+    <textarea
+      value={value}
+      rows={rows}
+      onChange={(e) => onChange(e.target.value)}
+      className="w-full resize-y rounded-xl border border-border bg-background px-3 py-2 text-sm leading-relaxed focus:border-grape focus:outline-none focus:ring-2 focus:ring-grape/20"
+    />
   );
 }
 
 /* ---------------- helpers ---------------- */
 
-function downloadFile(content: string, name: string, type: string) {
+function downloadFile(content: string | Uint8Array | ArrayBuffer, name: string, type: string) {
   const blob = new Blob([content], { type });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url; a.download = name; a.click();
+  a.href = url;
+  a.download = name;
+  a.click();
   URL.revokeObjectURL(url);
 }
